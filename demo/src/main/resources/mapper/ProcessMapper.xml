@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.ProcessMapper">
+
+    <select id="pageCC" resultType="com.example.demo.entity.Process">
+        SELECT 
+            id,
+            process_name as processName,
+            duration,
+            stage,
+            team_id as teamId,
+            is_shared as isShared,
+            isValid as isvalid,
+            create_time as createTime,
+            update_time as updateTime
+        FROM process
+        <where>
+            (isValid = 'Y' OR isValid IS NULL)
+            <if test="ew.sqlSegment != null and ew.sqlSegment != ''">
+                AND ${ew.sqlSegment}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

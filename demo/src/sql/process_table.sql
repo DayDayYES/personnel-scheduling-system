@@ -1,0 +1,11 @@
+CREATE TABLE process (
+    id INT AUTO_INCREMENT COMMENT '主键' PRIMARY KEY,
+    process_name VARCHAR(100) NOT NULL COMMENT '工序名称',
+    duration INT NOT NULL COMMENT '时长',
+    stage INT NOT NULL COMMENT '阶段',
+    team_id INT NOT NULL COMMENT '所属团队',
+    is_shared TINYINT(1) DEFAULT 0 COMMENT '人员共用还是专用，0专用1共用',
+    isValid VARCHAR(4) DEFAULT 'Y' NULL COMMENT '是否有效，Y有效，其他无效',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) CHARSET = utf8 COMMENT = '工序管理表';
