@@ -202,30 +202,112 @@
             </el-card>
           </el-col>
   
-          <!-- 甘特图 -->
-          <el-col :xs="24" :lg="12">
-            <el-card class="result-card" shadow="never" v-if="result.result.plot_image">
+          <!-- 甘特图展示区域 -->
+          <el-col :span="24" v-if="result.result.gantt_charts">
+            <el-card class="result-card charts-card" shadow="never">
               <div class="result-header">
                 <h3 class="result-title">
                   <i class="el-icon-picture"></i>
-                  调度甘特图
+                  多视角甘特图分析
                 </h3>
-                <el-button size="small" type="success" @click="downloadChart">
+                <el-button size="small" type="success" @click="downloadAllCharts">
                   <i class="el-icon-download"></i>
-                  下载图片
+                  下载所有图片
                 </el-button>
+              </div>
+              
+              <!-- 甘特图标签页 -->
+              <el-tabs v-model="activeChartTab" class="chart-tabs">
+                <!-- 工序视角甘特图 -->
+                <el-tab-pane 
+                  label="工序视角" 
+                  name="process"
+                  v-if="result.result.gantt_charts.process">
+                  <div class="chart-tab-content">
+                    <div class="chart-info">
+                      <i class="el-icon-info"></i>
+                      {{ result.result.chart_info ? result.result.chart_info.process : '工序视角甘特图 - 按工序顺序显示调度方案' }}
               </div>
               <div class="chart-container">
                 <img 
-                  :src="'data:image/png;base64,' + result.result.plot_image"
-                  alt="调度甘特图"
+                        :src="'data:image/png;base64,' + result.result.gantt_charts.process"
+                        alt="工序视角甘特图"
                   class="gantt-chart"
-                  @click="showFullChart = true">
-                <div class="chart-overlay" @click="showFullChart = true">
+                        @click="showFullChart('process')">
+                      <div class="chart-overlay" @click="showFullChart('process')">
                   <i class="el-icon-zoom-in"></i>
                   点击查看大图
                 </div>
               </div>
+                    <div class="chart-actions">
+                      <el-button size="mini" type="primary" @click="downloadChart('process')">
+                        <i class="el-icon-download"></i>
+                        下载工序视角图
+                      </el-button>
+                    </div>
+                  </div>
+                </el-tab-pane>
+
+                <!-- 工作点视角甘特图 -->
+                <el-tab-pane 
+                  label="工作点视角" 
+                  name="workpoint"
+                  v-if="result.result.gantt_charts.workpoint">
+                  <div class="chart-tab-content">
+                    <div class="chart-info">
+                      <i class="el-icon-info"></i>
+                      {{ result.result.chart_info ? result.result.chart_info.workpoint : '工作点视角甘特图 - 按工作点分组显示任务分配' }}
+                    </div>
+                    <div class="chart-container">
+                      <img 
+                        :src="'data:image/png;base64,' + result.result.gantt_charts.workpoint"
+                        alt="工作点视角甘特图"
+                        class="gantt-chart"
+                        @click="showFullChart('workpoint')">
+                      <div class="chart-overlay" @click="showFullChart('workpoint')">
+                        <i class="el-icon-zoom-in"></i>
+                        点击查看大图
+                      </div>
+                    </div>
+                    <div class="chart-actions">
+                      <el-button size="mini" type="primary" @click="downloadChart('workpoint')">
+                        <i class="el-icon-download"></i>
+                        下载工作点视角图
+                      </el-button>
+                    </div>
+                  </div>
+                </el-tab-pane>
+
+                <!-- 团队视角甘特图 -->
+                <el-tab-pane 
+                  label="团队视角" 
+                  name="team"
+                  v-if="result.result.gantt_charts.team">
+                  <div class="chart-tab-content">
+                    <div class="chart-info">
+                      <i class="el-icon-info"></i>
+                      {{ result.result.chart_info ? result.result.chart_info.team : '团队视角甘特图 - 按团队分组显示工作负载' }}
+                    </div>
+                    <div class="chart-container">
+                      <img 
+                        :src="'data:image/png;base64,' + result.result.gantt_charts.team"
+                        alt="团队视角甘特图"
+                        class="gantt-chart"
+                        @click="showFullChart('team')">
+                      <div class="chart-overlay" @click="showFullChart('team')">
+                        <i class="el-icon-zoom-in"></i>
+                        点击查看大图
+                      </div>
+                    </div>
+                    <div class="chart-actions">
+                      <el-button size="mini" type="primary" @click="downloadChart('team')">
+                        <i class="el-icon-download"></i>
+                        下载团队视角图
+                      </el-button>
+                    </div>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
             </el-card>
           </el-col>
         </el-row>
@@ -268,14 +350,14 @@
   
       <!-- 大图预览对话框 -->
       <el-dialog
-        title="调度甘特图"
-        :visible.sync="showFullChart"
-        width="80%"
+        :title="getChartDialogTitle()"
+        :visible.sync="showFullChartDialog"
+        width="90%"
         class="chart-dialog">
         <img 
-          v-if="result && result.result.plot_image"
-          :src="'data:image/png;base64,' + result.result.plot_image"
-          alt="调度甘特图"
+          v-if="result && result.result.gantt_charts && currentFullChartType"
+          :src="'data:image/png;base64,' + result.result.gantt_charts[currentFullChartType]"
+          :alt="getChartDialogTitle()"
           style="width: 100%; height: auto;">
       </el-dialog>
     </div>
@@ -297,7 +379,9 @@
         progressPercentage: 0,
         progressStatus: null,
         startTime: null,
-        showFullChart: false,
+        showFullChartDialog: false,
+        currentFullChartType: null,
+        activeChartTab: 'process',
         totalRuns: 0,
         runHistory: [],
         algorithmInfo: {
@@ -480,15 +564,58 @@
         
         this.$message.success('结果导出成功！');
       },
-      downloadChart() {
-        if (!this.result || !this.result.result.plot_image) return;
+      downloadChart(chartType) {
+        if (!this.result || !this.result.result.gantt_charts || !this.result.result.gantt_charts[chartType]) return;
+        
+        const chartNames = {
+          'process': '工序视角甘特图',
+          'workpoint': '工作点视角甘特图', 
+          'team': '团队视角甘特图'
+        };
         
         const link = document.createElement('a');
-        link.href = 'data:image/png;base64,' + this.result.result.plot_image;
-        link.download = `甘特图_${this.selectedAlgorithm}_${new Date().getTime()}.png`;
+        link.href = 'data:image/png;base64,' + this.result.result.gantt_charts[chartType];
+        link.download = `${chartNames[chartType]}_${this.selectedAlgorithm}_${new Date().getTime()}.png`;
         link.click();
         
-        this.$message.success('图片下载成功！');
+        this.$message.success(`${chartNames[chartType]}下载成功！`);
+      },
+      downloadAllCharts() {
+        if (!this.result || !this.result.result.gantt_charts) return;
+        
+        const charts = this.result.result.gantt_charts;
+        const chartNames = {
+          'process': '工序视角甘特图',
+          'workpoint': '工作点视角甘特图',
+          'team': '团队视角甘特图'
+        };
+        
+        let downloadCount = 0;
+        Object.keys(charts).forEach(chartType => {
+          if (charts[chartType]) {
+            setTimeout(() => {
+              const link = document.createElement('a');
+              link.href = 'data:image/png;base64,' + charts[chartType];
+              link.download = `${chartNames[chartType]}_${this.selectedAlgorithm}_${new Date().getTime()}.png`;
+              link.click();
+              downloadCount++;
+            }, downloadCount * 500); // 间隔500ms下载，避免浏览器阻止
+          }
+        });
+        
+        this.$message.success('所有甘特图开始下载！');
+      },
+      showFullChart(chartType) {
+        this.currentFullChartType = chartType;
+        this.showFullChartDialog = true;
+      },
+      getChartDialogTitle() {
+        const chartNames = {
+          'process': '工序视角甘特图',
+          'workpoint': '工作点视角甘特图',
+          'team': '团队视角甘特图'
+        };
+        return chartNames[this.currentFullChartType] || '甘特图预览';
       },
       clearHistory() {
         this.$confirm('确定要清空运行历史吗？', '确认操作', {
@@ -981,5 +1108,53 @@
       gap: 12px;
       align-items: flex-start;
     }
+  }
+  
+  /* 多视角甘特图样式 */
+  .charts-card {
+    margin-top: 20px;
+  }
+  
+  .chart-tabs {
+    margin-top: 20px;
+  }
+  
+  .chart-tab-content {
+    padding: 20px 0;
+  }
+  
+  .chart-info {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    color: #0369a1;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .chart-info i {
+    font-size: 16px;
+  }
+  
+  .chart-actions {
+    text-align: center;
+    padding: 12px 0;
+    border-top: 1px solid #ebeef5;
+    background: #fafafa;
+    border-radius: 0 0 8px 8px;
+  }
+  
+  .chart-overlay i {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  .gantt-chart:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   }
   </style>
