@@ -410,7 +410,7 @@ class DatabaseConnector:
                 return None
             
             print("\n" + "=" * 60)
-            print(f"📖 开始从数据库读取工作点工序数据")
+            print(f"📖 开始从数据库读取设备工序数据")
             print(f"   找到 {len(tables)} 个工序表")
             print("=" * 60)
             
@@ -421,13 +421,24 @@ class DatabaseConnector:
                 workpoint_id = table_name.replace('process_', '')
                 
                 # 从表注释提取工作点名称
-                workpoint_name = workpoint_id
-                if table_comment and '工作点【' in table_comment:
-                    # 从 '工作点【工作点1】工序信息表' 提取 '工作点1'
+                workpoint_name = workpoint_id  # 默认使用ID
+                if table_comment:
                     import re
-                    match = re.search(r'工作点【(.+?)】', table_comment)
+                    # 优先尝试提取【】中的内容: '工作点【工作点1】工序信息表' -> '工作点1'
+                    match = re.search(r'【(.+?)】', table_comment)
                     if match:
                         workpoint_name = match.group(1)
+                    else:
+                        # 如果没有【】，则清理后缀并使用整个注释
+                        # '设备1' -> '设备1'
+                        # '设备1工序信息表' -> '设备1'
+                        workpoint_name = table_comment.replace('工序信息表', '')\
+                                                     .replace('工序表', '')\
+                                                     .replace('信息表', '')\
+                                                     .strip()
+                        # 如果处理后为空，使用ID
+                        if not workpoint_name:
+                            workpoint_name = workpoint_id
                 
                 print(f"\n📋 读取 {workpoint_name} ({workpoint_id})")
                 
