@@ -19,6 +19,8 @@ from ddqn_algorithm import train_ddqn_agent, run_best_schedule
 from visualization import save_gantt_charts, visualize_schedule
 from improved_greedy_algorithm import compare_with_improved_greedy
 from global_best_tracker import global_best_tracker
+# 导入数据库连接器
+from db_connector import DatabaseConnector
 
 
 def set_random_seeds():
@@ -166,6 +168,21 @@ def RUN(workpoints_data):
         # 打印调度详情
         print(f"\n📋 最优调度详情:")
         print(record)
+
+        # 保存结果到数据库
+        print("\n💾 保存结果到数据库...")
+        db = DatabaseConnector(
+            host="localhost", 
+            user="root", 
+            password="123456",  # 替换为你的MySQL密码
+            database="secret"
+        )
+        
+        if db.connect():
+            # 保存调度记录
+            db.save_task_schedule(record)
+            # 关闭数据库连接
+            db.close()
         
         # 打印全局最优摘要
         # global_best_tracker.print_summary()

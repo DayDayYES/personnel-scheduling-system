@@ -230,14 +230,9 @@
               </div>
               <div class="chart-container">
                 <img 
-                        :src="'data:image/png;base64,' + result.result.gantt_charts.process"
-                        alt="工序视角甘特图"
-                  class="gantt-chart"
-                        @click="showFullChart('process')">
-                      <div class="chart-overlay" @click="showFullChart('process')">
-                  <i class="el-icon-zoom-in"></i>
-                  点击查看大图
-                </div>
+                  :src="'data:image/png;base64,' + result.result.gantt_charts.process"
+                  alt="工序视角甘特图"
+                  class="gantt-chart">
               </div>
                     <div class="chart-actions">
                       <el-button size="mini" type="primary" @click="downloadChart('process')">
@@ -262,12 +257,7 @@
                       <img 
                         :src="'data:image/png;base64,' + result.result.gantt_charts.workpoint"
                         alt="工作点视角甘特图"
-                        class="gantt-chart"
-                        @click="showFullChart('workpoint')">
-                      <div class="chart-overlay" @click="showFullChart('workpoint')">
-                        <i class="el-icon-zoom-in"></i>
-                        点击查看大图
-                      </div>
+                        class="gantt-chart">
                     </div>
                     <div class="chart-actions">
                       <el-button size="mini" type="primary" @click="downloadChart('workpoint')">
@@ -292,12 +282,7 @@
                       <img 
                         :src="'data:image/png;base64,' + result.result.gantt_charts.team"
                         alt="团队视角甘特图"
-                        class="gantt-chart"
-                        @click="showFullChart('team')">
-                      <div class="chart-overlay" @click="showFullChart('team')">
-                        <i class="el-icon-zoom-in"></i>
-                        点击查看大图
-                      </div>
+                        class="gantt-chart">
                     </div>
                     <div class="chart-actions">
                       <el-button size="mini" type="primary" @click="downloadChart('team')">
@@ -348,18 +333,6 @@
         </el-card>
       </div>
   
-      <!-- 大图预览对话框 -->
-      <el-dialog
-        :title="getChartDialogTitle()"
-        :visible.sync="showFullChartDialog"
-        width="90%"
-        class="chart-dialog">
-        <img 
-          v-if="result && result.result.gantt_charts && currentFullChartType"
-          :src="'data:image/png;base64,' + result.result.gantt_charts[currentFullChartType]"
-          :alt="getChartDialogTitle()"
-          style="width: 100%; height: auto;">
-      </el-dialog>
     </div>
   </template>
   
@@ -379,8 +352,6 @@
         progressPercentage: 0,
         progressStatus: null,
         startTime: null,
-        showFullChartDialog: false,
-        currentFullChartType: null,
         activeChartTab: 'process',
         totalRuns: 0,
         runHistory: [],
@@ -604,18 +575,6 @@
         });
         
         this.$message.success('所有甘特图开始下载！');
-      },
-      showFullChart(chartType) {
-        this.currentFullChartType = chartType;
-        this.showFullChartDialog = true;
-      },
-      getChartDialogTitle() {
-        const chartNames = {
-          'process': '工序视角甘特图',
-          'workpoint': '工作点视角甘特图',
-          'team': '团队视角甘特图'
-        };
-        return chartNames[this.currentFullChartType] || '甘特图预览';
       },
       clearHistory() {
         this.$confirm('确定要清空运行历史吗？', '确认操作', {
@@ -901,6 +860,7 @@
   
   .current-algorithm {
     background: linear-gradient(135deg, #667eea, #764ba2);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 600;
@@ -978,34 +938,6 @@
     height: auto;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-    transition: transform 0.3s ease;
-  }
-  
-  .gantt-chart:hover {
-    transform: scale(1.02);
-  }
-  
-  .chart-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    color: white;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    cursor: pointer;
-    border-radius: 8px;
-  }
-  
-  .chart-container:hover .chart-overlay {
-    opacity: 1;
   }
   
   /* 历史记录 */
@@ -1061,7 +993,7 @@
     border-radius: 4px;
     font-size: 12px;
   }
-  
+
   .run-status.success {
     background: #f0f9ff;
     color: #67c23a;
@@ -1148,13 +1080,4 @@
     border-radius: 0 0 8px 8px;
   }
   
-  .chart-overlay i {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-  
-  .gantt-chart:hover {
-    transform: scale(1.02);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  }
   </style>

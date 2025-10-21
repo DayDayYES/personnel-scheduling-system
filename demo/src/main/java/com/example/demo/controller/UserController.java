@@ -129,7 +129,7 @@ public class UserController {
 
         IPage result = userService.page(page, lambdaQueryWrapper);
 
-        System.out.println("total=="+result.getTotal());
+        // System.out.println("total=="+result.getTotal());
 
         return result.getRecords();
     }

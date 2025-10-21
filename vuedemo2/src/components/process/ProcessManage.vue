@@ -1,4 +1,4 @@
-<template>
+  <template>
     <div class="process-manage-container">
       <!-- 页面标题 -->
       <div class="page-header">
@@ -8,7 +8,7 @@
               <i class="el-icon-s-order title-icon"></i>
               工序管理
             </h2>
-            <p class="page-subtitle">管理生产工序信息，包括时长、阶段、团队分配等</p>
+            <p class="page-subtitle">管理各工作点的生产工序信息，包括时长、阶段、团队分配等</p>
           </div>
           <div class="header-actions">
             <el-button type="primary" icon="el-icon-plus" @click="add" class="add-btn">
@@ -16,6 +16,27 @@
             </el-button>
           </div>
         </div>
+      </div>
+
+      <!-- 工作点标签页 -->
+      <div class="workpoint-tabs-section">
+        <el-card class="tabs-card" shadow="never">
+          <el-tabs v-model="activeWorkpoint" type="card" @tab-click="handleWorkpointChange">
+            <el-tab-pane 
+              v-for="wp in workpoints" 
+              :key="wp.id" 
+              :label="wp.name" 
+              :name="wp.id">
+              <template #label>
+                <span class="tab-label">
+                  <i class="el-icon-location"></i>
+                  {{ wp.name }}
+                  <el-badge :value="wp.count" class="tab-badge" v-if="wp.count > 0"></el-badge>
+                </span>
+              </template>
+            </el-tab-pane>
+          </el-tabs>
+        </el-card>
       </div>
   
       <!-- 搜索过滤区域 -->
@@ -50,6 +71,17 @@
                 <el-select v-model="isShared" placeholder="请选择人员类型" class="filter-select" clearable>
                   <el-option
                     v-for="item in sharedTypes"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value">
+                  </el-option>
+                </el-select>
+              </div>
+              <div class="filter-item">
+                <label class="filter-label">并行标识：</label>
+                <el-select v-model="isParallel" placeholder="请选择并行标识" class="filter-select" clearable>
+                  <el-option
+                    v-for="item in parallelTypes"
                     :key="item.value"
                     :label="item.label"
                     :value="item.value">
@@ -116,40 +148,61 @@
               <template slot-scope="scope">
                 <div class="duration-info">
                   <i class="el-icon-time duration-icon"></i>
-                  <span class="duration-text">{{ scope.row.duration }}分钟</span>
+                  <span class="duration-text">{{ scope.row.duration }}h</span>
                 </div>
               </template>
             </el-table-column>
             
-            <el-table-column prop="stage" label="阶段" width="100" align="center">
+            <el-table-column prop="processOrder" label="阶段" width="100" align="center">
               <template slot-scope="scope">
                 <el-tag 
-                  :type="getStageType(scope.row.stage)" 
+                  :type="getStageType(scope.row.processOrder)" 
                   size="small" 
                   class="stage-tag">
                   <i class="el-icon-s-flag"></i>
-                  第{{ scope.row.stage }}阶段
+                  第{{ scope.row.processOrder }}阶段
                 </el-tag>
               </template>
             </el-table-column>
             
-            <el-table-column prop="teamId" label="所属团队" width="120" align="center">
+            <el-table-column prop="teamName" label="所属团队" width="120" align="center">
               <template slot-scope="scope">
                 <div class="team-info">
                   <i class="el-icon-s-custom team-icon"></i>
-                  <span>团队{{ scope.row.teamId }}</span>
+                  <span>{{ scope.row.teamName }}</span>
+                </div>
+              </template>
+            </el-table-column>
+
+            <el-table-column prop="teamSize" label="团队规模" width="100" align="center">
+              <template slot-scope="scope">
+                <div class="team-size-info">
+                  <i class="el-icon-user"></i>
+                  <span>{{ scope.row.teamSize }}人</span>
                 </div>
               </template>
             </el-table-column>
             
-            <el-table-column prop="isShared" label="人员类型" width="120" align="center">
+            <el-table-column prop="isDedicated" label="人员类型" width="100" align="center">
               <template slot-scope="scope">
                 <el-tag
-                  :type="scope.row.isShared ? 'success' : 'warning'"
+                  :type="scope.row.isDedicated ? 'warning' : 'success'"
                   size="small"
                   class="shared-tag">
-                  <i :class="scope.row.isShared ? 'el-icon-s-cooperation' : 'el-icon-user-solid'"></i>
-                  {{ scope.row.isShared ? '共用' : '专用' }}
+                  <i :class="scope.row.isDedicated ? 'el-icon-user-solid' : 'el-icon-s-cooperation'"></i>
+                  {{ scope.row.isDedicated ? '专用' : '共用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+
+            <el-table-column prop="isParallel" label="并行标识" width="100" align="center">
+              <template slot-scope="scope">
+                <el-tag
+                  :type="scope.row.isParallel ? 'success' : 'info'"
+                  size="small"
+                  class="parallel-tag">
+                  <i :class="scope.row.isParallel ? 'el-icon-finished' : 'el-icon-minus'"></i>
+                  {{ scope.row.isParallel ? '可并行' : '非并行' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -224,7 +277,7 @@
           ref="form" 
           :rules="rules" 
           :model="form" 
-          label-width="100px"
+          label-width="110px"
           class="process-form">
   
           <el-row :gutter="20">
@@ -241,20 +294,22 @@
   
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item prop="duration" label="时长(分钟)">
+              <el-form-item prop="duration" label="时长(小时)">
                 <el-input-number
                   v-model="form.duration"
-                  :min="1"
-                  :max="9999"
+                  :min="0.5"
+                  :max="999"
+                  :step="0.5"
+                  :precision="1"
                   controls-position="right"
                   class="duration-input">
                 </el-input-number>
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item prop="stage" label="阶段">
+              <el-form-item prop="processOrder" label="工序顺序">
                 <el-input-number
-                  v-model="form.stage"
+                  v-model="form.processOrder"
                   :min="1"
                   :max="99"
                   controls-position="right"
@@ -266,41 +321,56 @@
   
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item prop="teamId" label="所属团队">
-                <el-input-number
-                  v-model="form.teamId"
-                  :min="1"
-                  :max="99"
-                  controls-position="right"
-                  class="team-input">
-                </el-input-number>
+              <el-form-item prop="teamName" label="所属团队">
+                <el-select v-model="form.teamName" placeholder="请选择团队" class="team-select">
+                  <el-option label="团队1" value="team1"></el-option>
+                  <el-option label="团队2" value="team2"></el-option>
+                  <el-option label="团队3" value="team3"></el-option>
+                  <el-option label="团队4" value="team4"></el-option>
+                  <el-option label="团队5" value="team5"></el-option>
+                  <el-option label="团队6" value="team6"></el-option>
+                </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
+              <el-form-item prop="teamSize" label="团队规模">
+                <el-input-number
+                  v-model="form.teamSize"
+                  :min="1"
+                  :max="100"
+                  controls-position="right"
+                  class="team-size-input">
+                </el-input-number>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
               <el-form-item label="人员类型">
-                <el-radio-group v-model="form.isShared" class="shared-radio">
-                  <el-radio :label="false" class="radio-item">
+                <el-radio-group v-model="form.isDedicated" class="shared-radio">
+                  <el-radio :label="true" class="radio-item">
                     <i class="el-icon-user-solid"></i> 专用
                   </el-radio>
-                  <el-radio :label="true" class="radio-item">
+                  <el-radio :label="false" class="radio-item">
                     <i class="el-icon-s-cooperation"></i> 共用
                   </el-radio>
                 </el-radio-group>
               </el-form-item>
             </el-col>
+            <el-col :span="12">
+              <el-form-item label="并行标识">
+                <el-radio-group v-model="form.isParallel" class="parallel-radio">
+                  <el-radio :label="false" class="radio-item">
+                    <i class="el-icon-minus"></i> 非并行
+                  </el-radio>
+                  <el-radio :label="true" class="radio-item">
+                    <i class="el-icon-finished"></i> 可并行
+                  </el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
           </el-row>
-  
-          <!-- 工序描述 -->
-          <el-form-item label="工序描述">
-            <el-input
-              v-model="form.description"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入工序描述（可选）"
-              maxlength="200"
-              show-word-limit>
-            </el-input>
-          </el-form-item>
         </el-form>
   
         <span slot="footer" class="dialog-footer">
@@ -328,6 +398,10 @@
       };
       
       return {
+        // 工作点数据
+        workpoints: [], // 动态加载工作点列表
+        activeWorkpoint: '', // 当前激活的工作点（动态设置为第一个）
+        
         tableData: [],
         pageSize: 20,
         pageNum: 1,
@@ -335,6 +409,7 @@
         processName: '',
         stage: '',
         isShared: '',
+        isParallel: '',
         saveLoading: false,
         multipleSelection: [],
         stages: [
@@ -342,21 +417,32 @@
           {value: '2', label: '第2阶段'},
           {value: '3', label: '第3阶段'},
           {value: '4', label: '第4阶段'},
-          {value: '5', label: '第5阶段'}
+          {value: '5', label: '第5阶段'},
+          {value: '6', label: '第6阶段'},
+          {value: '7', label: '第7阶段'},
+          {value: '8', label: '第8阶段'},
+          {value: '9', label: '第9阶段'},
+          {value: '10', label: '第10阶段'}
         ],
         sharedTypes: [
           {value: 'false', label: '专用'},
           {value: 'true', label: '共用'}
         ],
+        parallelTypes: [
+          {value: 'false', label: '非并行'},
+          {value: 'true', label: '可并行'}
+        ],
         centerDialogVisible: false,
         form: {
           id: '',
           processName: '',
-          duration: 30,
-          stage: 1,
-          teamId: 1,
-          isShared: false,
-          description: ''
+          processOrder: 1,
+          teamName: 'team1',
+          isDedicated: false,
+          teamSize: 10,
+          duration: 10,
+          isParallel: false,
+          workpointId: ''
         },
         rules: {
           processName: [
@@ -367,16 +453,24 @@
             {required: true, message: '请输入时长', trigger: 'blur'},
             {validator: checkDuration, trigger: 'blur'}
           ],
-          stage: [
-            {required: true, message: '请输入阶段', trigger: 'blur'}
+          processOrder: [
+            {required: true, message: '请输入阶段顺序', trigger: 'blur'}
           ],
-          teamId: [
-            {required: true, message: '请输入团队ID', trigger: 'blur'}
+          teamName: [
+            {required: true, message: '请选择团队', trigger: 'blur'}
           ],
+          teamSize: [
+            {required: true, message: '请输入团队规模', trigger: 'blur'}
+          ]
         },
       };
     },
     methods: {
+      handleWorkpointChange() {
+        // 切换工作点时重置分页并重新加载数据
+        this.pageNum = 1;
+        this.resetParam();
+      },
       handleSelectionChange(val) {
         this.multipleSelection = val;
       },
@@ -386,7 +480,14 @@
       },
       formatTime(time) {
         if (!time) return '--';
-        return new Date(time).toLocaleDateString();
+        const date = new Date(time);
+        return date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       },
       resetForm() {
         this.$refs.form.resetFields();
@@ -398,16 +499,18 @@
           this.form = {
             id: '',
             processName: '',
-            duration: 30,
-            stage: 1,
-            teamId: 1,
-            isShared: false,
-            description: ''
+            processOrder: 1,
+            teamName: 'team1',
+            isDedicated: false,
+            teamSize: 10,
+            duration: 10,
+            isParallel: false,
+            workpointId: this.activeWorkpoint
           };
         });
       },
       del(id){
-        this.$axios.get(this.$httpUrl + '/process/del?id='+id).then(res => res.data).then(res => {
+        this.$axios.get(this.$httpUrl + `/process/${this.activeWorkpoint}/del?id=` + id).then(res => res.data).then(res => {
           if (res.code == 200) {
             this.$message({
               message: '删除成功!',
@@ -427,16 +530,19 @@
         this.$nextTick(() => {
           this.form.id = row.id;
           this.form.processName = row.processName;
+          this.form.processOrder = row.processOrder;
+          this.form.teamName = row.teamName;
+          this.form.isDedicated = row.isDedicated;
+          this.form.teamSize = row.teamSize;
           this.form.duration = row.duration;
-          this.form.stage = row.stage;
-          this.form.teamId = row.teamId;
-          this.form.isShared = row.isShared;
-          this.form.description = row.description || '';
+          this.form.isParallel = row.isParallel;
+          this.form.workpointId = this.activeWorkpoint;
         });
       },
       doSave(){
         this.saveLoading = true;
-        this.$axios.post(this.$httpUrl + '/process/save', this.form).then(res => res.data).then(res => {
+        this.form.workpointId = this.activeWorkpoint;
+        this.$axios.post(this.$httpUrl + `/process/${this.activeWorkpoint}/save`, this.form).then(res => res.data).then(res => {
           this.saveLoading = false;
           if (res.code == 200) {
             this.$message({
@@ -455,7 +561,8 @@
       },
       doMod(){
         this.saveLoading = true;
-        this.$axios.post(this.$httpUrl + '/process/update', this.form).then(res => res.data).then(res => {
+        this.form.workpointId = this.activeWorkpoint;
+        this.$axios.post(this.$httpUrl + `/process/${this.activeWorkpoint}/update`, this.form).then(res => res.data).then(res => {
           this.saveLoading = false;
           if (res.code == 200) {
             this.$message({
@@ -490,24 +597,105 @@
         this.processName = '';
         this.stage = '';
         this.isShared = '';
+        this.isParallel = '';
         this.loadPost();
       },
       loadPost() {
-        this.$axios.post(this.$httpUrl + '/process/listPageC1', {
+        // 使用新的动态API
+        this.$axios.post(this.$httpUrl + `/process/${this.activeWorkpoint}/listPageC1`, {
           pageNum: this.pageNum,
           pageSize: this.pageSize,
           param: {
             processName: this.processName,
-            stage: this.stage,
-            isShared: this.isShared
+            processOrder: this.stage,
+            isDedicated: this.isShared === 'false' ? true : (this.isShared === 'true' ? false : ''),
+            isParallel: this.isParallel
           }
         }).then(res => res.data).then(res => {
           if (res.code == 200) {
             this.tableData = res.data;
             this.total = res.total;
+            
+            // 更新工作点的工序数量
+            const wp = this.workpoints.find(w => w.id === this.activeWorkpoint);
+            if (wp) {
+              wp.count = res.total;
+            }
           } else {
             this.$message.error('获取数据失败');
+            this.tableData = [];
+            this.total = 0;
           }
+        }).catch(error => {
+          console.error('加载数据失败:', error);
+          this.$message.error('加载数据失败，请检查后端服务');
+          this.tableData = [];
+          this.total = 0;
+        });
+      },
+      // 加载工作点列表（动态从数据库获取）
+      loadWorkpoints() {
+        this.$axios.get(this.$httpUrl + '/process/workpoints').then(res => res.data).then(res => {
+          console.log('工作点列表响应:', res);
+          
+          if (res.code == 200) {
+            // 后端返回格式：{ code: 200, data: [...], total: 5 }
+            // 需要判断 data 是数组还是在 data 字段中
+            let workpointList = Array.isArray(res.data) ? res.data : [];
+            
+            console.log('解析的工作点列表:', workpointList);
+            
+            if (workpointList.length > 0) {
+              // 为每个工作点初始化count
+              this.workpoints = workpointList.map(wp => ({
+                id: wp.id,
+                name: wp.name,
+                count: 0
+              }));
+              
+              console.log('设置的workpoints:', this.workpoints);
+              
+              // 设置第一个工作点为激活状态
+              if (!this.activeWorkpoint && this.workpoints.length > 0) {
+                this.activeWorkpoint = this.workpoints[0].id;
+              }
+              
+              console.log('激活的工作点:', this.activeWorkpoint);
+              
+              // 加载第一个工作点的数据
+              this.loadPost();
+              
+              // 加载所有工作点的数量统计
+              this.loadAllWorkpointCounts();
+            } else {
+              this.$message.warning('未找到任何工作点表，请先在数据库中创建 process_workpoint_* 表');
+              this.workpoints = [];
+            }
+          } else {
+            this.$message.error('获取工作点列表失败: ' + (res.msg || '未知错误'));
+            this.workpoints = [];
+          }
+        }).catch(error => {
+          console.error('加载工作点列表失败:', error);
+          this.$message.error('加载工作点列表失败，请检查后端服务');
+          this.workpoints = [];
+        });
+      },
+      
+      // 加载所有工作点的工序数量
+      loadAllWorkpointCounts() {
+        this.workpoints.forEach(wp => {
+          this.$axios.post(this.$httpUrl + `/process/${wp.id}/listPageC1`, {
+            pageNum: 1,
+            pageSize: 1,
+            param: {}
+          }).then(res => res.data).then(res => {
+            if (res.code == 200) {
+              wp.count = res.total;
+            }
+          }).catch(() => {
+            wp.count = 0;
+          });
         });
       },
       handleSizeChange(val) {
@@ -521,7 +709,9 @@
       }
     },
     beforeMount() {
-      this.loadPost();
+      // 首先加载工作点列表（动态获取）
+      // loadWorkpoints 内部会自动调用 loadPost 和 loadAllWorkpointCounts
+      this.loadWorkpoints();
     }
   };
   </script>
@@ -535,6 +725,60 @@
   /* 页面头部 */
   .page-header {
     margin-bottom: 20px;
+  }
+
+  /* 工作点标签页 */
+  .workpoint-tabs-section {
+    margin-bottom: 20px;
+  }
+
+  .tabs-card {
+    border: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .tabs-card :deep(.el-card__body) {
+    padding: 16px 20px;
+  }
+
+  .tabs-card :deep(.el-tabs__header) {
+    margin: 0;
+  }
+
+  .tabs-card :deep(.el-tabs__item) {
+    height: 45px;
+    line-height: 45px;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 0 24px;
+  }
+
+  .tabs-card :deep(.el-tabs__item.is-active) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white !important;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .tabs-card :deep(.el-tabs__item:hover) {
+    color: #4facfe;
+  }
+
+  .tab-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tab-badge {
+    margin-left: 4px;
+  }
+
+  .tab-badge :deep(.el-badge__content) {
+    background-color: #f56c6c;
+    border-radius: 10px;
+    padding: 0 6px;
+    height: 18px;
+    line-height: 18px;
   }
   
   .header-content {
@@ -733,10 +977,11 @@
     margin-top: 2px;
   }
   
-  .duration-info, .team-info, .time-info {
+  .duration-info, .team-info, .team-size-info, .time-info {
     display: flex;
     align-items: center;
     gap: 6px;
+    justify-content: center;
   }
   
   .duration-icon {
@@ -754,8 +999,13 @@
   .time-icon {
     color: #909399;
   }
+
+  .team-size-info {
+    color: #606266;
+    font-weight: 500;
+  }
   
-  .stage-tag, .shared-tag {
+  .stage-tag, .shared-tag, .parallel-tag {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -806,11 +1056,15 @@
     padding: 24px;
   }
   
-  .duration-input, .stage-input, .team-input {
+  .duration-input, .stage-input, .team-input, .team-size-input {
+    width: 100%;
+  }
+
+  .team-select {
     width: 100%;
   }
   
-  .shared-radio {
+  .shared-radio, .parallel-radio {
     display: flex;
     gap: 20px;
   }

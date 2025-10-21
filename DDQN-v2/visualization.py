@@ -11,6 +11,38 @@ import os
 from config import TEAM_COLORS, TEAM_NAMES, VISUALIZATION_CONFIG, get_result_path, FILE_PATHS
 
 
+def _set_time_axis(ax, makespan):
+    """
+    设置横坐标为天数格式（上午/下午），每10个时间单位为一个半天
+    并添加时间分隔虚线
+    
+    Args:
+        ax: matplotlib轴对象
+        makespan: 完工时间
+    """
+    # 计算需要多少个时间段（每10个单位为一个半天）
+    interval = 10  # 每个半天的时间单位
+    max_time = int(np.ceil(makespan / interval)) * interval + interval
+    
+    # 生成时间刻度位置（每10个单位）
+    time_ticks = np.arange(0, max_time + 1, interval)
+    
+    # 生成时间标签
+    time_labels = []
+    for i, tick in enumerate(time_ticks):
+        day = i // 2 + 1  # 每两个时间段为一天
+        period = "上午" if i % 2 == 0 else "下午"
+        time_labels.append(f"第{day}天\n{period}")
+    
+    # 设置刻度和标签
+    ax.set_xticks(time_ticks)
+    ax.set_xticklabels(time_labels, fontsize=9, rotation=0)
+    
+    # 添加垂直虚线分隔
+    for tick in time_ticks[1:]:  # 跳过第一条线（起点）
+        ax.axvline(x=tick, color='gray', linestyle='--', alpha=0.4, linewidth=1)
+
+
 def create_traditional_gantt_chart(schedule, makespan):
     """创建传统工序视角甘特图"""
     print(f"📊 创建工序视角甘特图，完工时间: {makespan:.2f}")
@@ -55,6 +87,9 @@ def create_traditional_gantt_chart(schedule, makespan):
     ax.set_ylabel("工序", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
     ax.set_title(f'工序视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
+    
+    # 自定义横坐标为天数格式（上午/下午）
+    _set_time_axis(ax, makespan)
     ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
     
     # 添加图例
@@ -233,6 +268,9 @@ def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
     ax.set_ylabel("工作点", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
     ax.set_title(f'分层多工作点视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
+    
+    # 自定义横坐标为天数格式（上午/下午）
+    _set_time_axis(ax, makespan)
     ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
     
     # 添加图例
@@ -355,6 +393,9 @@ def create_layered_team_gantt_chart(schedule, makespan):
     ax.set_ylabel("团队", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
     ax.set_title(f'团队视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
+    
+    # 自定义横坐标为天数格式（上午/下午）
+    _set_time_axis(ax, makespan)
     ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
     
     # 添加工作量统计（调整位置以适应固定行高显示）
@@ -775,6 +816,9 @@ def visualize_schedule(schedule, makespan):
     ax.set_xlabel('时间', fontsize=12)
     ax.set_ylabel('工序', fontsize=12)
 
+    # 自定义横坐标为天数格式（上午/下午）
+    _set_time_axis(ax, makespan)
+    
     # 设置网格线
     ax.grid(axis='x', linestyle='--', alpha=0.7)
 

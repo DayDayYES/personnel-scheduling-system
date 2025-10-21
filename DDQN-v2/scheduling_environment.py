@@ -864,9 +864,9 @@ class FactoryEnvironment:
             reward += (num_started - 1) * 0.5  # 每多启动一个工序，获得0.5的奖励
         
         # print(f"✅ 批量启动成功: {num_started}个工序同时启动")
-        for step_id, workers in batch_allocation:
-            step = self._get_step_by_id(step_id)
-            print(f"   - {step['display_name']}: {workers}人")
+        # for step_id, workers in batch_allocation:
+        #     step = self._get_step_by_id(step_id)
+        #     print(f"   - {step['display_name']}: {workers}人")
         
         return next_state, reward, done
 

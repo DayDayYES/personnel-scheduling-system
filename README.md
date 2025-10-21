@@ -105,3 +105,12 @@ vuedemo2/src/
 | 数据库  |MySQL 8.0           |数据持久化    |
 |算法服务|Flask + PyTorch + DDQN|智能调度优化|
 |可视化  |Matplotlib + 甘特图|结果展示|
+
+
+##启动
+###vue：
+(base) PS D:\Program Files\JetBrains\IDEAProject\springboot-vue-wms_test> cd vuedemo2
+(base) PS D:\Program Files\JetBrains\IDEAProject\springboot-vue-wms_test\vuedemo2> npm run serve
+###Flask:
+ddqn_env
+
