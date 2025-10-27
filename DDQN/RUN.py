@@ -2058,61 +2058,6 @@ def replay_best_schedule(env, best_actions_file='best_schedule_info.txt'):
         return None, float('inf')
 
 
-# def plot_training_progress(episode_rewards, episode_makespans):
-#     """
-#     绘制训练过程中的奖励和完工时间变化图。
-
-#     Args:
-#         episode_rewards: 每个episode的总奖励列表
-#         episode_makespans: 每个episode的完工时间列表
-#     """
-#     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-
-#     # 绘制奖励曲线
-#     episodes = range(1, len(episode_rewards) + 1)
-#     ax1.plot(episodes, episode_rewards, 'b-', label='总奖励')
-
-#     # 添加平滑奖励曲线（移动平均）
-#     window_size = min(20, len(episode_rewards) // 5 + 1)  # 自适应窗口大小
-#     if window_size > 1:
-#         smoothed_rewards = np.convolve(episode_rewards, np.ones(window_size) / window_size, mode='valid')
-#         smoothed_episodes = range(window_size, len(episode_rewards) + 1)
-#         ax1.plot(smoothed_episodes, smoothed_rewards, 'r-', linewidth=2, label=f'移动平均 ({window_size}回合)')
-
-#     ax1.set_ylabel('总奖励', fontsize=12)
-#     ax1.set_title('训练进度：奖励和完工时间', fontsize=14, fontweight='bold')
-#     ax1.legend()
-#     ax1.grid(True, linestyle='--', alpha=0.7)
-
-#     # 绘制完工时间曲线（过滤掉无限值）
-#     valid_makespans = [(i + 1, m) for i, m in enumerate(episode_makespans) if m != float('inf') and m is not None]
-#     if valid_makespans:
-#         makespan_episodes, makespan_values = zip(*valid_makespans)
-#         ax2.plot(makespan_episodes, makespan_values, 'g-', label='完工时间')
-
-#         # 添加平滑的完工时间曲线
-#         if len(valid_makespans) > window_size:
-#             smoothed_makespans = np.convolve(makespan_values, np.ones(window_size) / window_size, mode='valid')
-#             smoothed_makespan_episodes = makespan_episodes[window_size - 1:]
-#             ax2.plot(smoothed_makespan_episodes, smoothed_makespans, 'orange', linewidth=2,
-#                      label=f'移动平均 ({window_size}回合)')
-
-#         # 突出显示最佳完工时间
-#         best_makespan = min(makespan_values)
-#         best_episode = makespan_episodes[makespan_values.index(best_makespan)]
-#         ax2.scatter(best_episode, best_makespan, color='red', s=100, zorder=5,
-#                     label=f'最佳值: {best_makespan:.2f} (第{best_episode}回合)')
-
-#     ax2.set_xlabel('训练回合', fontsize=12)
-#     ax2.set_ylabel('完工时间', fontsize=12)
-#     ax2.legend()
-#     ax2.grid(True, linestyle='--', alpha=0.7)
-
-#     plt.tight_layout()
-#     plt.savefig('training_progress.png')
-#     plt.show()
-
-
 # Main execution
 def RUN(workpoints_data):
     """

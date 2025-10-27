@@ -142,6 +142,7 @@ def run_algorithm(algorithm_name: str, input_data: List[float]) -> Dict[str, Any
             print(f"  {wp_name}: {step_count} 个工序" + ("（使用标准模板）" if step_count == 0 else ""))
         
         # 运行调度算法（不重复保存工序到数据库）
+        # RUN函数会返回: schedule, makespan, 以及三个图表
         result = RUN(workpoints_data, save_processes_to_db=False)
         
         # 检查返回值
@@ -151,9 +152,9 @@ def run_algorithm(algorithm_name: str, input_data: List[float]) -> Dict[str, Any
         if isinstance(result, tuple) and len(result) == 2 and result[0] is None:
             raise RuntimeError("Algorithm execution failed - returned None result")
         
-        if isinstance(result, tuple) and len(result) == 4:
-            # RUN函数返回: record, process_fig, workpoint_fig, team_fig
-            record, process_fig, workpoint_fig, team_fig = result
+        if isinstance(result, tuple) and len(result) == 5:
+            # RUN函数返回: schedule, makespan, process_fig, workpoint_fig, team_fig
+            schedule, makespan, process_fig, workpoint_fig, team_fig = result
             
             # 转换所有图像缓冲区为base64
             images = {}
@@ -176,8 +177,38 @@ def run_algorithm(algorithm_name: str, input_data: List[float]) -> Dict[str, Any
             else:
                 images['team_gantt'] = None
             
+            # 保存调度结果到数据库
+            table_name = None
+            try:
+                print("\n💾 保存调度结果到数据库...")
+                db = DatabaseConnector(
+                    host="localhost",
+                    user="root",
+                    password="123456",
+                    database="secret"
+                )
+                
+                if db.connect():
+                    table_name = db.save_schedule_result(
+                        schedule_data=schedule,
+                        # makespan=makespan,
+                        # algorithm_name='DDQN'
+                    )
+                    
+                    if table_name:
+                        print(f"✅ 调度结果已保存到表: {table_name}")
+                    else:
+                        print("⚠️  调度结果保存失败（不影响返回结果）")
+                    
+                    db.close()
+            except Exception as db_error:
+                print(f"⚠️  数据库保存出错: {db_error}（不影响返回结果）")
+            
+            # 返回包含原始调度数据的完整结果
             return {
-                "schedule_details": record if record else "Algorithm completed successfully",
+                "schedule_data": schedule,  # 原始调度数据数组
+                "makespan": float(makespan),  # 完工时间
+                "table_name": table_name,  # 数据库表名（如果保存成功）
                 "gantt_charts": {
                     "process": images['process_gantt'],
                     "workpoint": images['workpoint_gantt'], 

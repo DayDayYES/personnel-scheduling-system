@@ -44,11 +44,12 @@
             <span slot="title" class="menu-title">人员管理</span>
         </el-menu-item> -->
 
-        <!-- 调度算法
-        <el-menu-item index="/Test" class="menu-item">
-            <i class="el-icon-cpu menu-icon"></i>
-            <span slot="title" class="menu-title">调度算法</span>
-        </el-menu-item> -->
+
+        <!-- DHTMLX Gantt测试 -->
+        <el-menu-item index="/ScheduleGantt" class="menu-item">
+            <i class="el-icon-date menu-icon"></i>
+            <span slot="title" class="menu-title">结果分析</span>
+        </el-menu-item>
 
         <!-- 动态菜单 -->
         <el-menu-item 

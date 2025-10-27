@@ -209,25 +209,13 @@ def RUN(workpoints_data, save_processes_to_db=True):
         print(f"\n📋 最优调度详情:")
         print(record)
 
-        # 保存结果到数据库
-        print("\n💾 保存结果到数据库...")
-        db = DatabaseConnector(
-            host="localhost", 
-            user="root", 
-            password="123456",  # 替换为你的MySQL密码
-            database="secret"
-        )
-        
-        if db.connect():
-            # 保存调度记录
-            db.save_task_schedule(record)
-            # 关闭数据库连接
-            db.close()
+        # 注意：数据库保存已移到Flask.py中统一处理，避免重复保存
         
         # 打印全局最优摘要
         # global_best_tracker.print_summary()
         
-        return record, process_fig, workpoint_fig, team_fig
+        # 返回: schedule数据, makespan, 以及三个图表
+        return final_schedule, final_makespan, process_fig, workpoint_fig, team_fig
         
     except Exception as e:
         print(f"❌ 可视化生成失败: {e}")
@@ -263,9 +251,6 @@ def main(use_database=True):
                 password="123456",
                 database="secret"
             )
-            if db.connect():
-                db.save_all_workpoints_processes(workpoints_data, clear_existing=True)
-                db.close()
     else:
         print("\n📝 使用示例工作点数据...")
         workpoints_data = create_sample_workpoints_data()
@@ -279,7 +264,20 @@ def main(use_database=True):
         print(f"  {wp_name}: {step_count} 个工序" + ("（使用标准模板）" if step_count == 0 else ""))
     
     # 运行调度算法（不再重复保存工序到数据库）
-    record, process_fig, workpoint_fig, team_fig = RUN(workpoints_data, save_processes_to_db=False)
+    final_schedule, final_makespan, process_fig, workpoint_fig, team_fig = RUN(workpoints_data, save_processes_to_db=False)
+    if db.connect():
+        # 使用新的 save_schedule_result 方法保存
+        table_name = db.save_schedule_result(
+            schedule_data=final_schedule,
+        )
+        
+        if table_name:
+            print(f"✅ 调度结果已保存到表: {table_name}")
+        else:
+            print("⚠️  调度结果保存失败")
+        
+        # 关闭数据库连接
+        db.close()
     
     print("\n" + "=" * 60)
     print("调度算法执行完成!")

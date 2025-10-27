@@ -234,7 +234,7 @@ def train_ddqn_agent(env, workpoints_data=None):
                 global_best_tracker.update_best_result(
                     schedule=best_schedule,
                     makespan=best_makespan,
-                    algorithm_name="原版DDQN",
+                    algorithm_name="DDQN",
                     workpoints_data=workpoints_data,
                     episode=episode,
                     model_path=model_path

@@ -36,7 +36,10 @@ class DatabaseConnector:
             print("✅ 数据库连接已关闭")
             
     def save_task_schedule(self, record):
-        """保存工序调度明细"""
+        """
+        保存工序调度明细（旧方法，保留用于文本格式解析）
+        已废弃，请使用 save_schedule_result() 方法
+        """
         if not self.connection or not self.connection.is_connected():
             if not self.connect():
                 return False
@@ -108,6 +111,358 @@ class DatabaseConnector:
             print(f"❌ 保存调度记录失败: {e}")
             self.connection.rollback()
             return False
+    
+    def save_schedule_result(self, schedule_data):
+        """
+        保存调度结果到数据库（新方法，推荐使用）
+        
+        Args:
+            schedule_data: 调度结果列表，格式来自 env.get_schedule()
+                [
+                    {
+                        'id': 1,
+                        'name': '任务名称',
+                        'workpoint_id': 'workpoint_1',
+                        'workpoint_name': '设备1',
+                        'team': 'team1',
+                        'start': 0.0,
+                        'end': 10.5,
+                        'workers': 5,
+                        'order': 1
+                    },
+                    ...
+                ]
+            makespan: 完工时间（可选）
+            algorithm_name: 算法名称（可选，如 'DDQN', 'Greedy'）
+        
+        Returns:
+            str: 表名，如果成功；None 如果失败
+        """
+        if not self.connection or not self.connection.is_connected():
+            if not self.connect():
+                return None
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # 生成表名
+            cursor.execute("SELECT DATE_FORMAT(NOW(), '%Y%m%d_%H%i%s')")
+            time_suffix = cursor.fetchone()[0]
+            table_name = f"schedule_result_{time_suffix}"
+            
+            # 构建表注释
+            comment_parts = []
+            # if algorithm_name:
+            #     comment_parts.append(f"算法:{algorithm_name}")
+            # if makespan is not None:
+            #     comment_parts.append(f"完工时间:{makespan:.2f}")
+            table_comment = ''.join(comment_parts) if comment_parts else '调度结果'
+            
+            # 检查表是否存在，如果存在则删除
+            cursor.execute(f"""
+                SELECT COUNT(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = '{self.connection_config['database']}' 
+                AND table_name = '{table_name}'
+            """)
+            
+            if cursor.fetchone()[0] > 0:
+                print(f"ℹ️  表 {table_name} 已存在，删除旧表...")
+                cursor.execute(f"DROP TABLE `{table_name}`")
+            
+            # 创建新表（简化字段，优化显示格式）
+            create_table_sql = f"""
+            CREATE TABLE `{table_name}` (
+                `task_id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '任务序号',
+                `task_name` VARCHAR(100) NOT NULL COMMENT '任务名称',
+                `workpoint_id` INT NOT NULL COMMENT '设备ID（1,2,3...）',
+                `workpoint_name` VARCHAR(50) NOT NULL COMMENT '设备名称',
+                `team_id` INT NOT NULL COMMENT '团队ID（1,2,3...）',
+                `team_name` VARCHAR(50) NOT NULL COMMENT '团队名称（团队1,团队2...）',
+                `start_time` DECIMAL(10,2) NOT NULL COMMENT '开始时间',
+                `end_time` DECIMAL(10,2) NOT NULL COMMENT '结束时间',
+                `duration` DECIMAL(10,2) NOT NULL COMMENT '持续时间',
+                `workers` INT NOT NULL COMMENT '分配工人数',
+                `process_order` INT COMMENT '工序顺序',
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                INDEX `idx_workpoint` (`workpoint_id`),
+                INDEX `idx_team` (`team_id`),
+                INDEX `idx_start_time` (`start_time`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+            COMMENT='{table_comment}';
+            """
+            cursor.execute(create_table_sql)
+            
+            # 插入数据
+            insert_query = f"""
+            INSERT INTO `{table_name}` 
+            (task_name, workpoint_id, workpoint_name, team_id, team_name,
+             start_time, end_time, duration, workers, process_order)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            
+            insert_count = 0
+            for task in schedule_data:
+                # 计算持续时间
+                duration = task['end'] - task['start']
+                
+                # 提取workpoint数字ID: 'workpoint_1' -> 1
+                workpoint_id_str = task['workpoint_id']
+                workpoint_id_num = int(workpoint_id_str.replace('workpoint_', ''))
+                
+                # 提取team数字ID和名称: 'team1' -> 1, '团队1'
+                team_id_str = task['team']
+                team_id_num = int(team_id_str.replace('team', ''))
+                team_name = f'团队{team_id_num}'
+                
+                values = (
+                    task['name'],
+                    workpoint_id_num,  # 数字ID
+                    task['workpoint_name'],
+                    team_id_num,  # 数字ID
+                    team_name,  # 团队名称
+                    task['start'],
+                    task['end'],
+                    duration,
+                    task['workers'],
+                    task.get('order', None)
+                )
+                cursor.execute(insert_query, values)
+                insert_count += 1
+            
+            self.connection.commit()
+            print(f"✅ 成功保存 {insert_count} 条调度结果到表 {table_name}")
+
+            
+            cursor.close()
+            return table_name
+            
+        except Error as e:
+            print(f"❌ 保存调度结果失败: {e}")
+            import traceback
+            traceback.print_exc()
+            self.connection.rollback()
+            return None
+    
+    def load_schedule_result(self, table_name=None):
+        """
+        从数据库读取调度结果
+        
+        Args:
+            table_name: 表名，如果为None则读取最新的 schedule_result_ 表
+        
+        Returns:
+            dict: {
+                'schedule_data': [...],  # 调度任务列表
+                'makespan': float,       # 完工时间
+                'algorithm': str,        # 算法名称（从表注释提取）
+                'table_name': str,       # 表名
+                'task_count': int        # 任务数量
+            }
+            如果失败返回 None
+        """
+        if not self.connection or not self.connection.is_connected():
+            if not self.connect():
+                return None
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # 如果未指定表名，查找最新的
+            if not table_name:
+                cursor.execute(f"""
+                    SELECT table_name, table_comment
+                    FROM information_schema.tables
+                    WHERE table_schema = '{self.connection_config['database']}'
+                    AND table_name LIKE 'schedule_result_%'
+                    ORDER BY table_name DESC
+                    LIMIT 1
+                """)
+                result = cursor.fetchone()
+                if not result:
+                    print("⚠️  未找到调度结果表")
+                    cursor.close()
+                    return None
+                table_name, table_comment = result
+                print(f"📖 读取最新调度结果表: {table_name}")
+            else:
+                # 获取表注释
+                cursor.execute(f"""
+                    SELECT table_comment
+                    FROM information_schema.tables
+                    WHERE table_schema = '{self.connection_config['database']}'
+                    AND table_name = '{table_name}'
+                """)
+                result = cursor.fetchone()
+                table_comment = result[0] if result else None
+            
+            # 从表注释提取算法名称
+            algorithm_name = None
+            if table_comment:
+                import re
+                match = re.search(r'算法:(\w+)', table_comment)
+                if match:
+                    algorithm_name = match.group(1)
+            
+            # 读取数据（兼容新旧表结构）
+            # 先检查表结构，确定是否有team_id字段（新表结构）
+            cursor.execute(f"""
+                SELECT COLUMN_NAME 
+                FROM information_schema.COLUMNS 
+                WHERE TABLE_SCHEMA = '{self.connection_config['database']}' 
+                AND TABLE_NAME = '{table_name}' 
+                AND COLUMN_NAME = 'team_id'
+            """)
+            is_new_structure = cursor.fetchone() is not None
+            
+            if is_new_structure:
+                # 新表结构（优化后）
+                query = f"""
+                SELECT task_id, task_name, workpoint_id, workpoint_name, 
+                       team_id, team_name, start_time, end_time, duration, workers, process_order
+                FROM `{table_name}`
+                ORDER BY start_time, task_id
+                """
+            else:
+                # 旧表结构（兼容）
+                query = f"""
+                SELECT task_id, task_name, workpoint_id, workpoint_name, 
+                       team, start_time, end_time, duration, workers, process_order
+                FROM `{table_name}`
+                ORDER BY start_time, task_id
+                """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            if not rows:
+                print(f"⚠️  表 {table_name} 中没有数据")
+                cursor.close()
+                return None
+            
+            # 转换为标准格式
+            schedule_data = []
+            for row in rows:
+                if is_new_structure:
+                    # 新表结构：重新构造原始格式
+                    task_id = row[0]
+                    workpoint_id_num = row[2]
+                    team_id_num = row[4]
+                    
+                    schedule_data.append({
+                        'id': task_id,
+                        'name': row[1],
+                        'workpoint_id': f'workpoint_{workpoint_id_num}',  # 转回原格式
+                        'workpoint_name': row[3],
+                        'team': f'team{team_id_num}',  # 转回原格式
+                        'start': float(row[6]),
+                        'end': float(row[7]),
+                        'duration': float(row[8]),
+                        'workers': row[9],
+                        'order': row[10] if row[10] is not None else 0
+                    })
+                else:
+                    # 旧表结构
+                    schedule_data.append({
+                        'id': row[0],
+                        'name': row[1],
+                        'workpoint_id': row[2],
+                        'workpoint_name': row[3],
+                        'team': row[4],
+                        'start': float(row[5]),
+                        'end': float(row[6]),
+                        'duration': float(row[7]),
+                        'workers': row[8],
+                        'order': row[9] if row[9] is not None else 0
+                    })
+            
+            # 计算makespan（从数据中获取最大结束时间）
+            makespan = max([task['end'] for task in schedule_data]) if schedule_data else 0
+            
+            result = {
+                'schedule_data': schedule_data,
+                'makespan': makespan,
+                'algorithm': algorithm_name or '未知',
+                'table_name': table_name,
+                'task_count': len(schedule_data)
+            }
+            
+            print(f"✅ 成功从表 {table_name} 读取 {len(schedule_data)} 条调度结果")
+            print(f"   完工时间: {makespan:.2f}")
+            if algorithm_name:
+                print(f"   算法名称: {algorithm_name}")
+            
+            cursor.close()
+            return result
+            
+        except Error as e:
+            print(f"❌ 读取调度结果失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def list_schedule_results(self, limit=10):
+        """
+        列出数据库中的所有调度结果表
+        
+        Args:
+            limit: 返回的最大数量，默认10
+        
+        Returns:
+            list: [
+                {
+                    'table_name': 'schedule_result_20241027_153045',
+                    'comment': '算法:DDQN - 完工时间:75.50',
+                    'created_at': '2024-10-27 15:30:45',
+                    'task_count': 24
+                },
+                ...
+            ]
+        """
+        if not self.connection or not self.connection.is_connected():
+            if not self.connect():
+                return None
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # 查找所有 schedule_result_ 表
+            cursor.execute(f"""
+                SELECT table_name, table_comment, create_time
+                FROM information_schema.tables
+                WHERE table_schema = '{self.connection_config['database']}'
+                AND table_name LIKE 'schedule_result_%'
+                ORDER BY table_name DESC
+                LIMIT {limit}
+            """)
+            
+            tables = cursor.fetchall()
+            
+            if not tables:
+                print("ℹ️  数据库中没有调度结果表")
+                cursor.close()
+                return []
+            
+            results = []
+            for table_name, table_comment, create_time in tables:
+                # 查询任务数量
+                cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
+                task_count = cursor.fetchone()[0]
+                
+                results.append({
+                    'table_name': table_name,
+                    'comment': table_comment or '',
+                    'created_at': str(create_time) if create_time else None,
+                    'task_count': task_count
+                })
+            
+            print(f"📋 找到 {len(results)} 个调度结果表")
+            cursor.close()
+            return results
+            
+        except Error as e:
+            print(f"❌ 列出调度结果表失败: {e}")
+            return None
     
     def create_process_table(self, workpoint_id, workpoint_name):
         """
