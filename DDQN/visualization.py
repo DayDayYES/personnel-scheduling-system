@@ -154,19 +154,19 @@ def detect_parallel_tasks(tasks):
 
 
 def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
-    """创建分层的多工作点视角甘特图（解决并行任务重叠问题）"""
-    print(f"📊 创建分层多工作点视角甘特图，完工时间: {makespan:.2f}")
+    """创建分层的多设备视角甘特图（解决并行任务重叠问题）"""
+    print(f"📊 创建分层多设备视角甘特图，完工时间: {makespan:.2f}")
     
     fig, ax = plt.subplots(figsize=(VISUALIZATION_CONFIG["figure_size"][0], 
                                    VISUALIZATION_CONFIG["figure_size"][1] * 1.2))  # 增加高度
     
-    # 直接从schedule推断工作点信息
+    # 直接从schedule推断设备信息
     workpoints = _infer_workpoints_from_schedule(schedule)
     
     if not workpoints:
-        ax.text(0.5, 0.5, "无多工作点数据", ha='center', va='center', 
+        ax.text(0.5, 0.5, "无多设备数据", ha='center', va='center', 
                 transform=ax.transAxes, fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-        ax.set_title(f'工作点视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
+        ax.set_title(f'设备视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                     fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
         return fig
     
@@ -236,19 +236,6 @@ def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
             font_size = max(6, min(9, int(task_height * 12)))  # 根据任务条高度调整字体大小
             label_text = f"{task_name}\n{workers}人"
             
-            # if duration > makespan * VISUALIZATION_CONFIG["label_threshold"]:
-            #     ax.text(start + duration/2, task_y_pos, label_text,
-            #            ha='center', va='center', fontsize=font_size, fontweight='bold',
-            #            bbox=dict(boxstyle="round,pad=0.1", facecolor='white', alpha=0.9))
-            # elif start + duration < makespan * VISUALIZATION_CONFIG["label_position_threshold"]:
-            #     ax.text(start + duration + makespan * 0.01, task_y_pos, label_text,
-            #            ha='left', va='center', fontsize=font_size,
-            #            bbox=dict(boxstyle="round,pad=0.1", facecolor='white', alpha=0.9))
-            # else:
-            #     ax.text(start - makespan * 0.01, task_y_pos, label_text,
-            #            ha='right', va='center', fontsize=font_size,
-            #            bbox=dict(boxstyle="round,pad=0.1", facecolor='white', alpha=0.9))
-
             ax.text(start + duration/2, task_y_pos, label_text,
                     ha='center', va='center', fontsize=font_size, fontweight='bold')
         
@@ -265,8 +252,8 @@ def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
     ax.set_yticks(y_positions)
     ax.set_yticklabels(y_labels, fontsize=VISUALIZATION_CONFIG["fontsize_legend"])
     ax.set_xlabel("时间", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_ylabel("工作点", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_title(f'分层多工作点视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
+    ax.set_ylabel("设备", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
+    ax.set_title(f'分层多设备视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
     
     # 自定义横坐标为天数格式（上午/下午）
@@ -847,12 +834,12 @@ def _infer_workpoints_from_schedule(schedule):
     for task in schedule:
         task_name = task["name"]
         
-        # 解析新的任务名称格式："1-搭架子" -> 工作点1
+        # 解析新的任务名称格式："1-搭架子" -> 设备1
         if "-" in task_name:
             parts = task_name.split("-", 1)  # 只分割第一个"-"
             if len(parts) == 2 and parts[0].isdigit():
                 wp_number = parts[0]
-                wp_id = f"工作点{wp_number}"
+                wp_id = f"设备{wp_number}"
                 task_display_name = parts[1]
                 
                 if wp_id not in workpoint_tasks:
@@ -952,8 +939,8 @@ def save_gantt_charts(schedule, makespan, env=None):
         traceback.print_exc()
     
     try:
-        # 2. 分层多工作点视角甘特图（解决并行任务重叠问题）
-        print("2/3 生成分层多工作点视角甘特图...")
+        # 2. 分层多设备视角甘特图（解决并行任务重叠问题）
+        print("2/3 生成分层多设备视角甘特图...")
         workpoint_fig_obj = create_layered_workpoint_gantt_chart(schedule, makespan, env)
         workpoint_path = get_result_path(FILE_PATHS["workpoint_gantt"])
         workpoint_fig_obj.savefig(workpoint_path, dpi=VISUALIZATION_CONFIG["dpi"], 
@@ -970,7 +957,7 @@ def save_gantt_charts(schedule, makespan, env=None):
         plt.close(workpoint_fig_obj)
         
     except Exception as e:
-        print(f"❌ 多工作点视角甘特图生成失败: {e}")
+        print(f"❌ 多设备视角甘特图生成失败: {e}")
         import traceback
         traceback.print_exc()
     
