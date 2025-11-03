@@ -346,7 +346,7 @@
           </el-row>
 
           <el-row :gutter="20">
-            <el-col :span="12">
+            <el-col :span="24">
               <el-form-item label="人员类型">
                 <el-radio-group v-model="form.isDedicated" class="shared-radio">
                   <el-radio :label="true" class="radio-item">
@@ -358,7 +358,10 @@
                 </el-radio-group>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="24">
               <el-form-item label="并行标识">
                 <el-radio-group v-model="form.isParallel" class="parallel-radio">
                   <el-radio :label="false" class="radio-item">
@@ -1064,20 +1067,36 @@
     width: 100%;
   }
   
+  /* 人员类型和并行标识的表单项对齐 */
   .shared-radio, .parallel-radio {
-    display: flex;
+    display: inline-flex;
     gap: 20px;
+    align-items: center;
+  }
+  
+  .shared-radio :deep(.el-radio),
+  .parallel-radio :deep(.el-radio) {
+    margin-right: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
   }
   
   .radio-item {
-    display: flex;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  .radio-item :deep(.el-radio__input) {
+    display: inline-flex;
     align-items: center;
   }
   
   .radio-item :deep(.el-radio__label) {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
+    padding-left: 8px;
   }
   
   .dialog-footer {

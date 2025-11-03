@@ -202,7 +202,7 @@ def RUN(workpoints_data, save_processes_to_db=True):
     
     try:
         # 生成三张独立的甘特图
-        record, process_fig, workpoint_fig, team_fig = save_gantt_charts(final_schedule, final_makespan, env)
+        record, process_fig, workpoint_fig, team_fig = save_gantt_charts(final_schedule, final_makespan, env, time_format='numeric')
     
         
         # 打印调度详情

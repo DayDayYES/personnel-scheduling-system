@@ -11,7 +11,26 @@ import os
 from config import TEAM_COLORS, TEAM_NAMES, VISUALIZATION_CONFIG, get_result_path, FILE_PATHS
 
 
-def _set_time_axis(ax, makespan):
+def _set_time_axis(ax, makespan, time_format='numeric'):
+    """
+    设置横坐标格式
+    
+    Args:
+        ax: matplotlib轴对象
+        makespan: 完工时间
+        time_format: 时间格式，可选值：
+            - 'day': 天数格式（上午/下午），每10个时间单位为一个半天（默认）
+            - 'numeric': 离散数字格式，显示具体的时间数值
+    """
+    if time_format == 'day':
+        _set_day_time_axis(ax, makespan)
+    elif time_format == 'numeric':
+        _set_numeric_time_axis(ax, makespan)
+    else:
+        raise ValueError(f"不支持的时间格式: {time_format}，请使用 'day' 或 'numeric'")
+
+
+def _set_day_time_axis(ax, makespan):
     """
     设置横坐标为天数格式（上午/下午），每10个时间单位为一个半天
     并添加时间分隔虚线
@@ -43,8 +62,52 @@ def _set_time_axis(ax, makespan):
         ax.axvline(x=tick, color='gray', linestyle='--', alpha=0.4, linewidth=1)
 
 
-def create_traditional_gantt_chart(schedule, makespan):
-    """创建传统工序视角甘特图"""
+def _set_numeric_time_axis(ax, makespan):
+    """
+    设置横坐标为离散数字格式，显示具体的时间数值
+    并添加时间分隔虚线
+    
+    Args:
+        ax: matplotlib轴对象
+        makespan: 完工时间
+    """
+    # 根据makespan大小决定刻度间隔
+    if makespan <= 50:
+        interval = 5  # 小于50时，每5个单位一个刻度
+    elif makespan <= 100:
+        interval = 10  # 50-100时，每10个单位一个刻度
+    elif makespan <= 200:
+        interval = 20  # 100-200时，每20个单位一个刻度
+    else:
+        interval = 50  # 大于200时，每50个单位一个刻度
+    
+    # 计算最大时间（向上取整到interval的倍数）
+    max_time = int(np.ceil(makespan / interval)) * interval + interval
+    
+    # 生成时间刻度位置
+    time_ticks = np.arange(0, max_time + 1, interval)
+    
+    # 生成时间标签（直接显示数字）
+    time_labels = [f"{int(tick)}" for tick in time_ticks]
+    
+    # 设置刻度和标签
+    ax.set_xticks(time_ticks)
+    ax.set_xticklabels(time_labels, fontsize=10, rotation=0)
+    
+    # 添加垂直虚线分隔
+    for tick in time_ticks[1:]:  # 跳过第一条线（起点）
+        ax.axvline(x=tick, color='gray', linestyle='--', alpha=0.3, linewidth=0.8)
+
+
+def create_traditional_gantt_chart(schedule, makespan, time_format='numeric'):
+    """
+    创建传统工序视角甘特图
+    
+    Args:
+        schedule: 调度结果
+        makespan: 完工时间
+        time_format: 时间格式，'day'（天数+上午/下午）或 'numeric'（离散数字）
+    """
     print(f"📊 创建工序视角甘特图，完工时间: {makespan:.2f}")
     
     fig, ax = plt.subplots(figsize=VISUALIZATION_CONFIG["figure_size"])
@@ -88,8 +151,8 @@ def create_traditional_gantt_chart(schedule, makespan):
     ax.set_title(f'工序视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
     
-    # 自定义横坐标为天数格式（上午/下午）
-    _set_time_axis(ax, makespan)
+    # 设置横坐标格式（天数格式或数字格式）
+    _set_time_axis(ax, makespan, time_format=time_format)
     ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
     
     # 添加图例
@@ -153,8 +216,16 @@ def detect_parallel_tasks(tasks):
     return [(layer, total_layers) for layer in task_layers]
 
 
-def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
-    """创建分层的多设备视角甘特图（解决并行任务重叠问题）"""
+def create_layered_workpoint_gantt_chart(schedule, makespan, env=None, time_format='numeric'):
+    """
+    创建分层的多设备视角甘特图（解决并行任务重叠问题）
+    
+    Args:
+        schedule: 调度结果
+        makespan: 完工时间
+        env: 环境对象（可选）
+        time_format: 时间格式，'day'（天数+上午/下午）或 'numeric'（离散数字）
+    """
     print(f"📊 创建分层多设备视角甘特图，完工时间: {makespan:.2f}")
     
     fig, ax = plt.subplots(figsize=(VISUALIZATION_CONFIG["figure_size"][0], 
@@ -256,8 +327,8 @@ def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
     ax.set_title(f'分层多设备视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
     
-    # 自定义横坐标为天数格式（上午/下午）
-    _set_time_axis(ax, makespan)
+    # 设置横坐标格式（天数格式或数字格式）
+    _set_time_axis(ax, makespan, time_format=time_format)
     ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
     
     # 添加图例
@@ -272,7 +343,7 @@ def create_layered_workpoint_gantt_chart(schedule, makespan, env=None):
     return fig
 
 
-def create_layered_team_gantt_chart(schedule, makespan):
+def create_layered_team_gantt_chart(schedule, makespan, time_format='numeric'):
     """创建分层的团队视角甘特图（解决并行任务重叠问题）"""
     print(f"📊 创建分层团队视角甘特图，完工时间: {makespan:.2f}")
     
@@ -381,8 +452,8 @@ def create_layered_team_gantt_chart(schedule, makespan):
     ax.set_title(f'团队视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
                 fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
     
-    # 自定义横坐标为天数格式（上午/下午）
-    _set_time_axis(ax, makespan)
+    # 设置横坐标格式（天数格式或数字格式）
+    _set_time_axis(ax, makespan, time_format=time_format)
     ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
     
     # 添加工作量统计（调整位置以适应固定行高显示）
@@ -404,347 +475,15 @@ def create_layered_team_gantt_chart(schedule, makespan):
     return fig
 
 
-def create_workpoint_gantt_chart(schedule, makespan, env=None):
-    """创建多工作点视角甘特图"""
-    print(f"📊 创建多工作点视角甘特图，完工时间: {makespan:.2f}")
+def visualize_schedule(schedule, makespan, time_format='numeric'):
+    """
+    创建传统甘特图可视化调度方案，并打印详细信息
     
-    fig, ax = plt.subplots(figsize=VISUALIZATION_CONFIG["figure_size"])
-    
-    # 直接从schedule推断工作点信息，不使用env数据（避免数据不一致）
-    workpoints = _infer_workpoints_from_schedule(schedule)
-    
-    if not workpoints:
-        ax.text(0.5, 0.5, "无多工作点数据", ha='center', va='center', 
-                transform=ax.transAxes, fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-        ax.set_title(f'多工作点视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
-                    fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
-        return fig
-    
-    y_pos = 0
-    y_labels = []
-    y_positions = []
-    
-    print(f"    多工作点甘特图: {len(workpoints)} 个工作点")
-    
-    # 计算实际的最大时间，确保数据一致性
-    actual_max_time = max(task["start"] + task["duration"] for wp in workpoints for task in wp["tasks"]) if workpoints else makespan
-    print(f"    实际最大时间: {actual_max_time:.2f}, 传入完工时间: {makespan:.2f}")
-    
-    for wp in workpoints:
-        wp_name = wp["name"]
-        tasks = wp["tasks"]
-        
-        if not tasks:
-            continue
-            
-        y_labels.append(wp_name)
-        y_positions.append(y_pos)
-        
-        print(f"    工作点 {wp_name}: {len(tasks)} 个任务")
-        
-        # 绘制该工作点的所有任务
-        for task in tasks:
-            start = task["start"]
-            duration = task["duration"]
-            team = task["team"]
-            workers = task["workers"]
-            task_name = task["name"]
-            
-            print(f"      任务: {task_name}, 开始: {start:.1f}, 结束: {start+duration:.1f}, 团队: {team}")
-            
-            # 绘制任务条
-            color = TEAM_COLORS.get(team, '#CCCCCC')
-            rect = Rectangle((start, y_pos - 0.4), duration, 0.8,
-                           facecolor=color, alpha=VISUALIZATION_CONFIG["alpha"], 
-                           edgecolor='black', linewidth=1)
-            ax.add_patch(rect)
-            
-            # 修复标签位置逻辑 - 基于makespan而不是actual_max_time
-            label_text = f"{task_name}\n{workers}人"
-            
-            if duration > makespan * VISUALIZATION_CONFIG["label_threshold"]:  # 任务足够长，在内部显示
-                ax.text(start + duration/2, y_pos, label_text,
-                       ha='center', va='center', fontsize=9, fontweight='bold',
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-            elif start + duration < makespan * VISUALIZATION_CONFIG["label_position_threshold"]:  # 任务在左侧，右侧显示
-                ax.text(start + duration + makespan * 0.02, y_pos, label_text,
-                       ha='left', va='center', fontsize=8,
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-            else:  # 任务在右侧，左侧显示
-                ax.text(start - makespan * 0.02, y_pos, label_text,
-                       ha='right', va='center', fontsize=8,
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-        
-        y_pos += 1
-    
-    # 设置坐标轴 - 基于makespan设置合理的x轴范围
-    ax.set_ylim(-0.5, len(workpoints) - 0.5)
-    ax.set_xlim(0, makespan * VISUALIZATION_CONFIG["xlim_padding"])
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=VISUALIZATION_CONFIG["fontsize_legend"])
-    ax.set_xlabel("时间", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_ylabel("工作点", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_title(f'多工作点视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
-                fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
-    ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
-    
-    # 添加图例
-    legend_elements = []
-    for team, color in TEAM_COLORS.items():
-        legend_elements.append(plt.Rectangle((0,0),1,1, facecolor=color, 
-                                           alpha=VISUALIZATION_CONFIG["alpha"], label=team))
-    
-    ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1, 1),
-             fontsize=VISUALIZATION_CONFIG["fontsize_legend"], frameon=True)
-    
-    return fig
-
-
-def create_team_gantt_chart(schedule, makespan):
-    """创建团队视角甘特图"""
-    print(f"📊 创建团队视角甘特图，完工时间: {makespan:.2f}")
-    
-    fig, ax = plt.subplots(figsize=VISUALIZATION_CONFIG["figure_size"])
-    
-    # 按团队分组任务
-    team_tasks = {}
-    for step in schedule:
-        team = step["team"]
-        if team not in team_tasks:
-            team_tasks[team] = []
-        team_tasks[team].append(step)
-    
-    # 为每个团队排序任务
-    for team in team_tasks:
-        team_tasks[team].sort(key=lambda x: x["start"])
-    
-    print(f"    团队甘特图: {len(team_tasks)} 个团队")
-    
-    y_pos = 0
-    y_labels = []
-    y_positions = []
-    
-    for team, tasks in team_tasks.items():
-        team_name = TEAM_NAMES.get(team, team)
-        y_labels.append(team_name)
-        y_positions.append(y_pos)
-        
-        # 绘制该团队的所有任务
-        for task in tasks:
-            start = task["start"]
-            duration = task["end"] - task["start"]
-            workers = task["workers"]
-            task_name = task["name"]
-            
-            # 绘制任务条
-            color = TEAM_COLORS.get(team, '#CCCCCC')
-            rect = Rectangle((start, y_pos - 0.4), duration, 0.8,
-                           facecolor=color, alpha=VISUALIZATION_CONFIG["alpha"], 
-                           edgecolor='black', linewidth=1)
-            ax.add_patch(rect)
-            
-            # 添加任务标签
-            label_text = f"{task_name}\n{workers}人"
-            if duration > makespan * VISUALIZATION_CONFIG["label_threshold"]:
-                ax.text(start + duration/2, y_pos, label_text,
-                       ha='center', va='center', fontsize=9, fontweight='bold',
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-            else:
-                ax.text(start + duration + makespan * 0.01, y_pos, label_text,
-                       ha='left', va='center', fontsize=8)
-        
-        y_pos += 1
-    
-    # 设置坐标轴
-    ax.set_ylim(-0.5, len(team_tasks) - 0.5)
-    ax.set_xlim(0, makespan * VISUALIZATION_CONFIG["xlim_padding"])
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=VISUALIZATION_CONFIG["fontsize_legend"])
-    ax.set_xlabel("时间", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_ylabel("团队", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_title(f'团队视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
-                fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
-    ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
-    
-    # 添加工作量统计
-    team_workload = {}
-    for team, tasks in team_tasks.items():
-        total_duration = sum(task["end"] - task["start"] for task in tasks)
-        team_workload[team] = total_duration
-    
-    # 在右侧添加工作量信息
-    workload_text = "团队工作量:\n"
-    for team, workload in team_workload.items():
-        team_name = TEAM_NAMES.get(team, team)
-        workload_text += f"{team_name}: {workload:.1f}h\n"
-    
-    ax.text(1.02, 0.5, workload_text, transform=ax.transAxes, fontsize=9,
-           verticalalignment='center', bbox=dict(boxstyle="round,pad=0.3", 
-                                               facecolor='lightgray', alpha=0.8))
-    
-    return fig
-    
-    # 计算实际的最大时间，确保数据一致性
-    actual_max_time = max(task["start"] + task["duration"] for wp in workpoints for task in wp["tasks"]) if workpoints else makespan
-    print(f"    实际最大时间: {actual_max_time:.2f}, 传入完工时间: {makespan:.2f}")
-    
-    for wp in workpoints:
-        wp_name = wp["name"]
-        tasks = wp["tasks"]
-        
-        if not tasks:
-            continue
-            
-        y_labels.append(wp_name)
-        y_positions.append(y_pos)
-        
-        print(f"    工作点 {wp_name}: {len(tasks)} 个任务")
-        
-        # 绘制该工作点的所有任务
-        for task in tasks:
-            start = task["start"]
-            duration = task["duration"]
-            team = task["team"]
-            workers = task["workers"]
-            task_name = task["name"]
-            
-            print(f"      任务: {task_name}, 开始: {start:.1f}, 结束: {start+duration:.1f}, 团队: {team}")
-            
-            # 绘制任务条
-            color = TEAM_COLORS.get(team, '#CCCCCC')
-            rect = Rectangle((start, y_pos - 0.4), duration, 0.8,
-                           facecolor=color, alpha=VISUALIZATION_CONFIG["alpha"], 
-                           edgecolor='black', linewidth=1)
-            ax.add_patch(rect)
-            
-            # 修复标签位置逻辑 - 基于makespan而不是actual_max_time
-            label_text = f"{task_name}\n{workers}人"
-            
-            if duration > makespan * VISUALIZATION_CONFIG["label_threshold"]:  # 任务足够长，在内部显示
-                ax.text(start + duration/2, y_pos, label_text,
-                       ha='center', va='center', fontsize=9, fontweight='bold',
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-            elif start + duration < makespan * VISUALIZATION_CONFIG["label_position_threshold"]:  # 任务在左侧，右侧显示
-                ax.text(start + duration + makespan * 0.02, y_pos, label_text,
-                       ha='left', va='center', fontsize=8,
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-            else:  # 任务在右侧，左侧显示
-                ax.text(start - makespan * 0.02, y_pos, label_text,
-                       ha='right', va='center', fontsize=8,
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-        
-        y_pos += 1
-    
-    # 设置坐标轴 - 基于makespan设置合理的x轴范围
-    ax.set_ylim(-0.5, len(workpoints) - 0.5)
-    ax.set_xlim(0, makespan * VISUALIZATION_CONFIG["xlim_padding"])
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=VISUALIZATION_CONFIG["fontsize_legend"])
-    ax.set_xlabel("时间", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_ylabel("工作点", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_title(f'多工作点视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
-                fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
-    ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
-    
-    # 添加图例
-    legend_elements = []
-    for team, color in TEAM_COLORS.items():
-        legend_elements.append(plt.Rectangle((0,0),1,1, facecolor=color, 
-                                           alpha=VISUALIZATION_CONFIG["alpha"], label=team))
-    
-    ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1, 1),
-             fontsize=VISUALIZATION_CONFIG["fontsize_legend"], frameon=True)
-    
-    return fig
-
-
-def create_team_gantt_chart(schedule, makespan):
-    """创建团队视角甘特图"""
-    print(f"📊 创建团队视角甘特图，完工时间: {makespan:.2f}")
-    
-    fig, ax = plt.subplots(figsize=VISUALIZATION_CONFIG["figure_size"])
-    
-    # 按团队分组任务
-    team_tasks = {}
-    for step in schedule:
-        team = step["team"]
-        if team not in team_tasks:
-            team_tasks[team] = []
-        team_tasks[team].append(step)
-    
-    # 为每个团队排序任务
-    for team in team_tasks:
-        team_tasks[team].sort(key=lambda x: x["start"])
-    
-    print(f"    团队甘特图: {len(team_tasks)} 个团队")
-    
-    y_pos = 0
-    y_labels = []
-    y_positions = []
-    
-    for team, tasks in team_tasks.items():
-        team_name = TEAM_NAMES.get(team, team)
-        y_labels.append(team_name)
-        y_positions.append(y_pos)
-        
-        # 绘制该团队的所有任务
-        for task in tasks:
-            start = task["start"]
-            duration = task["end"] - task["start"]
-            workers = task["workers"]
-            task_name = task["name"]
-            
-            # 绘制任务条
-            color = TEAM_COLORS.get(team, '#CCCCCC')
-            rect = Rectangle((start, y_pos - 0.4), duration, 0.8,
-                           facecolor=color, alpha=VISUALIZATION_CONFIG["alpha"], 
-                           edgecolor='black', linewidth=1)
-            ax.add_patch(rect)
-            
-            # 添加任务标签
-            label_text = f"{task_name}\n{workers}人"
-            if duration > makespan * VISUALIZATION_CONFIG["label_threshold"]:
-                ax.text(start + duration/2, y_pos, label_text,
-                       ha='center', va='center', fontsize=9, fontweight='bold',
-                       bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.8))
-            else:
-                ax.text(start + duration + makespan * 0.01, y_pos, label_text,
-                       ha='left', va='center', fontsize=8)
-        
-        y_pos += 1
-    
-    # 设置坐标轴
-    ax.set_ylim(-0.5, len(team_tasks) - 0.5)
-    ax.set_xlim(0, makespan * VISUALIZATION_CONFIG["xlim_padding"])
-    ax.set_yticks(y_positions)
-    ax.set_yticklabels(y_labels, fontsize=VISUALIZATION_CONFIG["fontsize_legend"])
-    ax.set_xlabel("时间", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_ylabel("团队", fontsize=VISUALIZATION_CONFIG["fontsize_label"])
-    ax.set_title(f'团队视角甘特图 (完工时间: {makespan:.2f} 时间单位)', 
-                fontsize=VISUALIZATION_CONFIG["fontsize_title"], fontweight='bold', pad=20)
-    ax.grid(axis='x', alpha=VISUALIZATION_CONFIG["grid_alpha"], linestyle='--')
-    
-    # 添加工作量统计
-    team_workload = {}
-    for team, tasks in team_tasks.items():
-        total_duration = sum(task["end"] - task["start"] for task in tasks)
-        team_workload[team] = total_duration
-    
-    # 在右侧添加工作量信息
-    workload_text = "团队工作量:\n"
-    for team, workload in team_workload.items():
-        team_name = TEAM_NAMES.get(team, team)
-        workload_text += f"{team_name}: {workload:.1f}h\n"
-    
-    ax.text(1.02, 0.5, workload_text, transform=ax.transAxes,
-           fontsize=VISUALIZATION_CONFIG["fontsize_text"], verticalalignment='center',
-           bbox=dict(boxstyle="round,pad=0.5", facecolor='lightgray', alpha=0.8))
-    
-    return fig
-
-
-def visualize_schedule(schedule, makespan):
-    """创建传统甘特图可视化调度方案，并打印详细信息"""
+    Args:
+        schedule: 调度结果
+        makespan: 完工时间
+        time_format: 时间格式，'day'（天数+上午/下午）或 'numeric'（离散数字）
+    """
     # 按开始时间排序
     schedule.sort(key=lambda x: x["start"])
 
@@ -803,8 +542,8 @@ def visualize_schedule(schedule, makespan):
     ax.set_xlabel('时间', fontsize=12)
     ax.set_ylabel('工序', fontsize=12)
 
-    # 自定义横坐标为天数格式（上午/下午）
-    _set_time_axis(ax, makespan)
+    # 设置横坐标格式（天数格式或数字格式）
+    _set_time_axis(ax, makespan, time_format=time_format)
     
     # 设置网格线
     ax.grid(axis='x', linestyle='--', alpha=0.7)
@@ -899,8 +638,16 @@ def _infer_workpoints_from_schedule(schedule):
     return workpoints
 
 
-def save_gantt_charts(schedule, makespan, env=None):
-    """保存所有甘特图到result文件夹"""
+def save_gantt_charts(schedule, makespan, env=None, time_format='numeric'):
+    """
+    保存所有甘特图到result文件夹
+    
+    Args:
+        schedule: 调度结果
+        makespan: 完工时间
+        env: 环境对象（可选）
+        time_format: 时间格式，'day'（天数+上午/下午）或 'numeric'（离散数字）
+    """
     from io import BytesIO
     
     saved_files = []
@@ -916,7 +663,7 @@ def save_gantt_charts(schedule, makespan, env=None):
 
         # 生成工序甘特图作为对比
         print("1/3 生成工序视角甘特图...")
-        record, process_fig = visualize_schedule(schedule, makespan)
+        record, process_fig = visualize_schedule(schedule, makespan, time_format=time_format)
         process_path = get_result_path(FILE_PATHS["process_gantt"])
         plt.savefig(process_path, dpi=VISUALIZATION_CONFIG["dpi"], 
                 bbox_inches=VISUALIZATION_CONFIG["bbox_inches"])
@@ -941,7 +688,7 @@ def save_gantt_charts(schedule, makespan, env=None):
     try:
         # 2. 分层多设备视角甘特图（解决并行任务重叠问题）
         print("2/3 生成分层多设备视角甘特图...")
-        workpoint_fig_obj = create_layered_workpoint_gantt_chart(schedule, makespan, env)
+        workpoint_fig_obj = create_layered_workpoint_gantt_chart(schedule, makespan, env, time_format=time_format)
         workpoint_path = get_result_path(FILE_PATHS["workpoint_gantt"])
         workpoint_fig_obj.savefig(workpoint_path, dpi=VISUALIZATION_CONFIG["dpi"], 
                                  bbox_inches=VISUALIZATION_CONFIG["bbox_inches"])
@@ -964,7 +711,7 @@ def save_gantt_charts(schedule, makespan, env=None):
     try:
         # 3. 分层团队视角甘特图（解决并行任务重叠问题）
         print("3/3 生成分层团队视角甘特图...")
-        team_fig_obj = create_layered_team_gantt_chart(schedule, makespan)
+        team_fig_obj = create_layered_team_gantt_chart(schedule, makespan, time_format=time_format)
         team_path = get_result_path(FILE_PATHS["team_gantt"])
         team_fig_obj.savefig(team_path, dpi=VISUALIZATION_CONFIG["dpi"], 
                             bbox_inches=VISUALIZATION_CONFIG["bbox_inches"])

@@ -1,5 +1,5 @@
 <template>
-  <div class="gantt-test-container">
+  <div class="gantt-container">
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-content">
@@ -71,7 +71,7 @@
     <!-- Gantt图表容器 -->
     <div class="gantt-section">
       <el-card shadow="never" class="gantt-card">
-        <div ref="ganttContainer" class="gantt-container"></div>
+        <div ref="ganttContainer" class="dhtmlx-gantt-container"></div>
       </el-card>
     </div>
 
@@ -325,6 +325,10 @@ export default {
       gantt.config.subscales = [
         { unit: 'hour', step: 12, date: '%H:%i' }
       ];
+      
+      // 自动高度配置
+      gantt.config.autosize = 'y';  // 垂直方向自动调整大小
+      gantt.config.autosize_min_height = 400;  // 最小高度400px
       
       // 列配置
       gantt.config.columns = [
@@ -687,10 +691,9 @@ export default {
 </script>
 
 <style scoped>
-.gantt-test-container {
-  padding: 20px;
-  background: #f5f7fa;
-  min-height: 100vh;
+.gantt-container {
+  padding: 0;
+  background: transparent;
 }
 
 /* 页面头部 */
@@ -701,14 +704,14 @@ export default {
 .header-content {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
-  padding: 30px;
+  padding: 24px;
   color: white;
 }
 
 .page-title {
   margin: 0 0 8px 0;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -763,9 +766,10 @@ export default {
   border-radius: 12px;
 }
 
-.gantt-container {
+.dhtmlx-gantt-container {
   width: 100%;
-  height: 600px;
+  min-height: 400px;
+  height: auto;
   position: relative;
 }
 
@@ -798,36 +802,36 @@ export default {
 }
 
 /* DHTMLX Gantt样式定制 */
-.gantt-test-container ::v-deep .gantt_task_line {
+.dhtmlx-gantt-container ::v-deep .gantt_task_line {
   border-radius: 4px;
 }
 
-.gantt-test-container ::v-deep .gantt_project {
+.dhtmlx-gantt-container ::v-deep .gantt_project {
   background-color: #818cf8 !important;
   border-color: #4f46e5 !important;
 }
 
 /* 团队颜色 */
-.gantt-test-container ::v-deep .gantt_task_team1 { background-color: #FF6B35 !important; border-color: #CC5529 !important; }
-.gantt-test-container ::v-deep .gantt_task_team2 { background-color: #EF3950 !important; border-color: #BE2E42 !important; }
-.gantt-test-container ::v-deep .gantt_task_team3 { background-color: #507EF7 !important; border-color: #3F64C8 !important; }
-.gantt-test-container ::v-deep .gantt_task_team4 { background-color: #9B59B6 !important; border-color: #7C4792 !important; }
-.gantt-test-container ::v-deep .gantt_task_team5 { background-color: #00B774 !important; border-color: #009B62 !important; }
-.gantt-test-container ::v-deep .gantt_task_team6 { background-color: #F39C12 !important; border-color: #C27D0E !important; }
+.dhtmlx-gantt-container ::v-deep .gantt_task_team1 { background-color: #FF6B35 !important; border-color: #CC5529 !important; }
+.dhtmlx-gantt-container ::v-deep .gantt_task_team2 { background-color: #EF3950 !important; border-color: #BE2E42 !important; }
+.dhtmlx-gantt-container ::v-deep .gantt_task_team3 { background-color: #507EF7 !important; border-color: #3F64C8 !important; }
+.dhtmlx-gantt-container ::v-deep .gantt_task_team4 { background-color: #9B59B6 !important; border-color: #7C4792 !important; }
+.dhtmlx-gantt-container ::v-deep .gantt_task_team5 { background-color: #00B774 !important; border-color: #009B62 !important; }
+.dhtmlx-gantt-container ::v-deep .gantt_task_team6 { background-color: #F39C12 !important; border-color: #C27D0E !important; }
 
-.gantt-test-container ::v-deep .gantt_grid_scale {
+.dhtmlx-gantt-container ::v-deep .gantt_grid_scale {
   background-color: #667eea;
   color: white;
   font-weight: 600;
 }
 
-.gantt-test-container ::v-deep .gantt_task_scale {
+.dhtmlx-gantt-container ::v-deep .gantt_task_scale {
   background-color: #667eea;
   color: white;
   font-weight: 600;
 }
 
-.gantt-test-container ::v-deep .gantt_grid_head_cell {
+.dhtmlx-gantt-container ::v-deep .gantt_grid_head_cell {
   color: white;
 }
 </style>

@@ -559,13 +559,13 @@
   
   /* 页面头部 */
   .page-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
   
   .header-content {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 16px;
-    padding: 32px;
+    border-radius: 12px;
+    padding: 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -577,35 +577,23 @@
   }
   
   .page-title {
-    margin: 0 0 12px 0;
-    font-size: 32px;
-    font-weight: 700;
+    margin: 0 0 8px 0;
+    font-size: 28px;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   
   .title-icon {
     color: #ffd700;
-    font-size: 36px;
-    animation: pulse 2s ease-in-out infinite alternate;
-  }
-  
-  @keyframes pulse {
-    from { transform: scale(1); }
-    to { transform: scale(1.1); }
-  }
-  
-  @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    font-size: 32px;
   }
   
   .page-subtitle {
     margin: 0;
     opacity: 0.9;
-    font-size: 16px;
-    line-height: 1.5;
+    font-size: 14px;
   }
   
   .header-stats {
@@ -892,11 +880,19 @@
   .chart-container {
     position: relative;
     text-align: center;
+    max-height: 600px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
   
   .gantt-chart {
     max-width: 100%;
+    max-height: 600px;
+    width: auto;
     height: auto;
+    object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
