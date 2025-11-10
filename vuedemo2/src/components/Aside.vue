@@ -35,7 +35,7 @@
         <!-- 工序管理 -->
         <el-menu-item index="/ProcessManage" class="menu-item">
             <i class="el-icon-s-order menu-icon"></i>
-            <span slot="title" class="menu-title">工序管理</span>
+            <span slot="title" class="menu-title">数据采集及处理</span>
         </el-menu-item>
 
         <!-- 人员管理
@@ -45,10 +45,10 @@
         </el-menu-item> -->
 
 
-        <!-- DHTMLX Gantt测试 -->
+        <!-- DHTMLX Gantt -->
         <el-menu-item index="/ScheduleGantt" class="menu-item">
             <i class="el-icon-date menu-icon"></i>
-            <span slot="title" class="menu-title">结果分析</span>
+            <span slot="title" class="menu-title">检验动态驾驶舱</span>
         </el-menu-item>
 
         <!-- 动态菜单 -->

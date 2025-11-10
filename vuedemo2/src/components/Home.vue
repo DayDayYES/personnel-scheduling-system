@@ -130,7 +130,7 @@
                         <div class="action-icon">
                         <i class="el-icon-s-order"></i>
                         </div>
-                        <span>工序管理</span>
+                        <span>数据采集及处理</span>
                     </div>
                     <div class="action-item" @click="goToUser">
                         <div class="action-icon">
@@ -142,7 +142,7 @@
                         <div class="action-icon">
                         <i class="el-icon-cpu"></i>
                         </div>
-                        <span>调度算法</span>
+                        <span>流程分析资源调配</span>
                     </div>
                     <div class="action-item" @click="showComingSoon">
                         <div class="action-icon">

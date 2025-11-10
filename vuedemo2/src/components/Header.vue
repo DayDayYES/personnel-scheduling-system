@@ -15,9 +15,9 @@
         <div class="system-info">
           <h2 class="system-title">
             <i class="el-icon-s-grid title-icon"></i>
-            人员调度管理系统
+            智能检验平台
           </h2>
-          <span class="system-subtitle">Personnel Scheduling Management</span>
+          <span class="system-subtitle"></span>
         </div>
       </div>
   

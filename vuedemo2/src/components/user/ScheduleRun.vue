@@ -6,9 +6,9 @@
           <div class="title-section">
             <h2 class="page-title">
               <i class="el-icon-cpu title-icon"></i>
-              调度算法
+              流程分析资源调配
             </h2>
-            <p class="page-subtitle">智能调度算法平台，支持DDPG、DDQN、CGA多种算法</p>
+            <p class="page-subtitle">流程分析资源调配平台，支持DDPG、DDQN、CGA多种算法</p>
           </div>
           <div class="header-stats">
             <div class="stat-item">

@@ -661,15 +661,17 @@
               // 设置第一个工作点为激活状态
               if (!this.activeWorkpoint && this.workpoints.length > 0) {
                 this.activeWorkpoint = this.workpoints[0].id;
+                console.log('激活的工作点:', this.activeWorkpoint);
+                
+                // 只有在 activeWorkpoint 被设置后才加载数据
+                this.$nextTick(() => {
+                  // 加载第一个工作点的数据
+                  this.loadPost();
+                  
+                  // 加载所有工作点的数量统计
+                  this.loadAllWorkpointCounts();
+                });
               }
-              
-              console.log('激活的工作点:', this.activeWorkpoint);
-              
-              // 加载第一个工作点的数据
-              this.loadPost();
-              
-              // 加载所有工作点的数量统计
-              this.loadAllWorkpointCounts();
             } else {
               this.$message.warning('未找到任何工作点表，请先在数据库中创建 process_workpoint_* 表');
               this.workpoints = [];
