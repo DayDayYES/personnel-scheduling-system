@@ -41,7 +41,15 @@ const routes = [
                 meta: {
                     title: '调度算法'
                 },
-                component:()=>import('../components/user/Test.vue'),
+                component:()=>import('../components/user/ScheduleRun.vue'),
+            },
+            {
+                path: '/ScheduleGantt',
+                name: 'scheduleGantt',
+                meta: {
+                    title: 'DHTMLX Gantt测试'
+                },
+                component:()=>import('../components/user/ScheduleGantt.vue'),
             },
         ]
     }

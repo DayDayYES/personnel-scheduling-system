@@ -14,8 +14,8 @@
           <div class="logo-container">
             <el-icon class="system-logo"><el-icon-user-filled /></el-icon>
           </div>
-          <h1 class="system-title">人员调度系统</h1>
-          <p class="system-subtitle">Personnel Scheduling System</p>
+          <h1 class="system-title">智能检验平台</h1>
+          <p class="system-subtitle"></p>
         </div>
         
         <!-- 登录表单 -->

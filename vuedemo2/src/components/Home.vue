@@ -6,7 +6,8 @@
           <div class="welcome-text">
             <h1 class="welcome-title">
               <i class="el-icon-sunny welcome-icon"></i>
-              {{ getGreeting() }}，{{ user.name || '用户' }}！
+              {{ getGreeting() }}
+              <!-- {{ getGreeting() }}，{{ user.name || '用户' }}！ -->
             </h1>
             <p class="welcome-subtitle">欢迎使用人员调度管理系统，今天也要加油工作哦！</p>
           </div>
@@ -129,7 +130,7 @@
                         <div class="action-icon">
                         <i class="el-icon-s-order"></i>
                         </div>
-                        <span>工序管理</span>
+                        <span>数据采集及处理</span>
                     </div>
                     <div class="action-item" @click="goToUser">
                         <div class="action-icon">
@@ -141,7 +142,7 @@
                         <div class="action-icon">
                         <i class="el-icon-cpu"></i>
                         </div>
-                        <span>调度算法</span>
+                        <span>流程分析资源调配</span>
                     </div>
                     <div class="action-item" @click="showComingSoon">
                         <div class="action-icon">
@@ -236,34 +237,36 @@
   .home-container {
     min-height: 100%;
     padding: 0;
+    background: transparent;
   }
   
   /* 欢迎区域 */
   .welcome-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    padding: 30px;
-    margin-bottom: 24px;
-    color: white;
+    margin-bottom: 20px;
   }
   
   .welcome-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    color: white;
   }
   
   .welcome-title {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 600;
     margin: 0 0 8px 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   
   .welcome-icon {
     color: #ffd700;
+    font-size: 32px;
     animation: rotate 3s linear infinite;
   }
   
@@ -273,7 +276,7 @@
   }
   
   .welcome-subtitle {
-    font-size: 16px;
+    font-size: 14px;
     opacity: 0.9;
     margin: 0;
   }

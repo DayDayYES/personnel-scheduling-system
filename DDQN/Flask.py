@@ -6,7 +6,9 @@ from typing import Dict, Any, Union, List
 from flask import send_file
 import io
 import base64
-from RUN import RUN
+from main import RUN, load_workpoints_from_database
+from scheduling_environment import FactoryEnvironment, create_sample_workpoints_data
+from db_connector import DatabaseConnector
 
 # 初始化 Flask 应用
 app = Flask(__name__)
@@ -106,79 +108,128 @@ def run_algorithm(algorithm_name: str, input_data: List[float]) -> Dict[str, Any
     Returns:
         算法执行结果字典
     """
-    # 初始化处理时间矩阵
-    process_time = initialize_process_time()
 
-    # 用输入数据填充矩阵
-    process_time = fill_process_time(process_time, input_data)
-
-    # 调用 RUN 模块 (假设 RUN() 是你实现的算法)
     try:
-         # 延迟导入以避免循环依赖
-        result, img = RUN(input_data)  # 假设 RUN 可以接受参数
-        #print(result)
-        # 转换结果为可序列化格式
-        return {
-            "schedule_details": result,
-            "plot_image": base64.b64encode(img.getvalue()).decode('utf-8')
-        }
+        print("=" * 60)
+        print("多工作点调度系统 (Flask API)")
+        print("=" * 60)
+        
+        # 从数据库加载工作点数据
+        print("📖 从数据库加载工作点数据...")
+        workpoints_data = load_workpoints_from_database()
+        
+        if workpoints_data is None:
+            print("⚠️  数据库加载失败，使用示例数据")
+            workpoints_data = create_sample_workpoints_data()
+            # 将示例数据保存到数据库以备后用
+            db = DatabaseConnector(
+                host="localhost",
+                user="root",
+                password="123456",
+                database="secret"
+            )
+            if db.connect():
+                db.save_all_workpoints_processes(workpoints_data, clear_existing=True)
+                db.close()
+        
+        print("开始多工作点调度算法...")
+        print(f"工作点数量: {len(workpoints_data)}")
+        print(f"接收到的参数: {input_data}")
+        
+        for wp_id, wp_data in workpoints_data.items():
+            wp_name = wp_data.get("name", wp_id)
+            step_count = len(wp_data.get("steps", []))
+            print(f"  {wp_name}: {step_count} 个工序" + ("（使用标准模板）" if step_count == 0 else ""))
+        
+        # 运行调度算法（不重复保存工序到数据库）
+        # RUN函数会返回: schedule, makespan, 以及三个图表
+        result = RUN(workpoints_data, save_processes_to_db=False)
+        
+        # 检查返回值
+        if result is None:
+            raise RuntimeError("Algorithm execution failed - no result returned")
+        
+        if isinstance(result, tuple) and len(result) == 2 and result[0] is None:
+            raise RuntimeError("Algorithm execution failed - returned None result")
+        
+        if isinstance(result, tuple) and len(result) == 5:
+            # RUN函数返回: schedule, makespan, process_fig, workpoint_fig, team_fig
+            schedule, makespan, process_fig, workpoint_fig, team_fig = result
+            
+            # 转换所有图像缓冲区为base64
+            images = {}
+            
+            # 工序视角甘特图
+            if process_fig is not None and hasattr(process_fig, 'getvalue'):
+                images['process_gantt'] = base64.b64encode(process_fig.getvalue()).decode('utf-8')
+            else:
+                images['process_gantt'] = None
+                
+            # 工作点视角甘特图  
+            if workpoint_fig is not None and hasattr(workpoint_fig, 'getvalue'):
+                images['workpoint_gantt'] = base64.b64encode(workpoint_fig.getvalue()).decode('utf-8')
+            else:
+                images['workpoint_gantt'] = None
+                
+            # 团队视角甘特图
+            if team_fig is not None and hasattr(team_fig, 'getvalue'):
+                images['team_gantt'] = base64.b64encode(team_fig.getvalue()).decode('utf-8')
+            else:
+                images['team_gantt'] = None
+            
+            # 保存调度结果到数据库
+            table_name = None
+            try:
+                print("\n💾 保存调度结果到数据库...")
+                db = DatabaseConnector(
+                    host="localhost",
+                    user="root",
+                    password="123456",
+                    database="secret"
+                )
+                
+                if db.connect():
+                    table_name = db.save_schedule_result(
+                        schedule_data=schedule,
+                        # makespan=makespan,
+                        # algorithm_name='DDQN'
+                    )
+                    
+                    if table_name:
+                        print(f"✅ 调度结果已保存到表: {table_name}")
+                    else:
+                        print("⚠️  调度结果保存失败（不影响返回结果）")
+                    
+                    db.close()
+            except Exception as db_error:
+                print(f"⚠️  数据库保存出错: {db_error}（不影响返回结果）")
+            
+            # 返回包含原始调度数据的完整结果
+            return {
+                "schedule_data": schedule,  # 原始调度数据数组
+                "makespan": float(makespan),  # 完工时间
+                "table_name": table_name,  # 数据库表名（如果保存成功）
+                "gantt_charts": {
+                    "process": images['process_gantt'],
+                    "workpoint": images['workpoint_gantt'], 
+                    "team": images['team_gantt']
+                },
+                "chart_info": {
+                    "process": "工序视角甘特图 - 按工序顺序显示调度方案",
+                    "workpoint": "工作点视角甘特图 - 按工作点分组显示任务分配",
+                    "team": "团队视角甘特图 - 按团队分组显示工作负载"
+                }
+            }
+        else:
+            raise RuntimeError(f"Unexpected return format from RUN function: {type(result)}, length: {len(result) if isinstance(result, tuple) else 'N/A'}")
     except ImportError:
         raise RuntimeError("RUN module not available")
     except Exception as e:
         raise RuntimeError(f"Algorithm execution failed: {str(e)}")
 
 
-def initialize_process_time() -> List[List[List[float]]]:
-    """
-    初始化处理时间矩阵
-    """
-    return [
-        [
-            [10, 999.0, 999.0, 999.0, 999.0, 999.0],
-            [999.0, 5, 999.0, 999.0, 999.0, 999.0],
-            [999.0, 8, 999.0, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 6, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 7, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 999.0, 9, 999.0, 999.0],
-            [999.0, 999.0, 999.0, 999.0, 6, 999.0],
-            [999.0, 999.0, 999.0, 999.0, 7, 999.0],
-            [999.0, 999.0, 999.0, 999.0, 6, 999.0],
-            [999.0, 999.0, 7, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 7, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 7, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 4, 999.0, 999.0, 999.0],
-            [999.0, 999.0, 999.0, 999.0, 999.0, 7],
-            [999.0, 999.0, 5, 999.0, 999.0, 999.0]
-        ]
-    ]
 
 
-def fill_process_time(matrix: List[List[List[float]]], values: List[float]) -> List[List[List[float]]]:
-    """
-    用输入值填充处理时间矩阵
-
-    Args:
-        matrix: 原始矩阵
-        values: 输入值列表
-
-    Returns:
-        填充后的新矩阵
-    """
-    value_index = 0
-    new_matrix = [row[:] for row in matrix[0]]  # 创建深拷贝
-
-    for i in range(len(new_matrix)):
-        for j in range(len(new_matrix[i])):
-            if new_matrix[i][j] != 999.0:
-                if value_index >= len(values):
-                    raise ValueError("Not enough values provided")
-                new_matrix[i][j] = values[value_index]
-                value_index += 1
-
-    if value_index < len(values):
-        raise ValueError("Too many values provided")
-
-    return [new_matrix]
 
 
 def convert_result_to_dict(result: Any) -> Union[Dict, List]:
