@@ -26,13 +26,13 @@
           router
           :default-active="$route.path">
 
-        <!-- 首页 -->
+        <!-- 系统首页 -->
         <el-menu-item index="/Home" class="menu-item">
             <i class="el-icon-s-home menu-icon"></i>
             <span slot="title" class="menu-title">系统首页</span>
         </el-menu-item>
 
-        <!-- 工序管理 -->
+        <!-- 数据采集及处理 -->
         <el-menu-item index="/ProcessManage" class="menu-item">
             <i class="el-icon-s-order menu-icon"></i>
             <span slot="title" class="menu-title">数据采集及处理</span>
@@ -45,7 +45,7 @@
         </el-menu-item>
 
         <!-- 流程分析资源调配 -->
-        <el-menu-item index="/Test" class="menu-item">
+        <el-menu-item index="/ScheduleAlgorithm" class="menu-item">
             <i class="el-icon-cpu menu-icon"></i>
             <span slot="title" class="menu-title">流程分析资源调配</span>
         </el-menu-item>
@@ -56,15 +56,16 @@
             <span slot="title" class="menu-title">检验动态驾驶舱</span>
         </el-menu-item>
 
+        <!-- menu表里面有两个菜单：用户管理和调度算法，重复了，所以不显示 -->
         <!-- 动态菜单 -->
-        <el-menu-item 
+        <!-- <el-menu-item 
             v-for="(item, i) in menu" 
             :key="i"
             :index="'/' + item.menuclick" 
             class="menu-item">
             <i :class="item.menuicon || 'el-icon-menu'" class="menu-icon"></i>
             <span slot="title" class="menu-title">{{ item.menuname }}</span>
-        </el-menu-item>
+        </el-menu-item> -->
       </el-menu>
   
       <!-- 底部信息 -->
