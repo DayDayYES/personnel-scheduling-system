@@ -38,14 +38,19 @@
             <span slot="title" class="menu-title">数据采集及处理</span>
         </el-menu-item>
 
-        <!-- 人员管理
+        <!-- 人员管理 -->
         <el-menu-item index="/UserManage" class="menu-item">
             <i class="el-icon-user-solid menu-icon"></i>
             <span slot="title" class="menu-title">人员管理</span>
-        </el-menu-item> -->
+        </el-menu-item>
 
+        <!-- 流程分析资源调配 -->
+        <el-menu-item index="/Test" class="menu-item">
+            <i class="el-icon-cpu menu-icon"></i>
+            <span slot="title" class="menu-title">流程分析资源调配</span>
+        </el-menu-item>
 
-        <!-- DHTMLX Gantt -->
+        <!-- 检验动态驾驶舱 -->
         <el-menu-item index="/ScheduleGantt" class="menu-item">
             <i class="el-icon-date menu-icon"></i>
             <span slot="title" class="menu-title">检验动态驾驶舱</span>

@@ -79,8 +79,8 @@ DDQN_CONFIG = {
     "update_freq": 5,       # 目标网络更新频率
     "learning_rate": 0.001, # 学习率
     "memory_size": 10000,   # 经验回放缓冲区大小
-    "episodes": 5,         # 训练轮数
-    "max_steps": 200,      # 每轮最大步数
+    "episodes": 5,        # 训练轮数
+    "max_steps": 100,      # 每轮最大步数
     "action_size": 100      # 动作空间大小
 }
 
