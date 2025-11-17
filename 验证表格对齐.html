@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>表格对齐验证助手</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .checklist {
+      list-style: none;
+      margin-bottom: 30px;
+    }
+
+    .checklist li {
+      padding: 15px;
+      margin-bottom: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .checklist li:hover {
+      background: #e9ecef;
+      transform: translateX(5px);
+    }
+
+    .checklist li.checked {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .checkbox {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #667eea;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .checklist li.checked .checkbox {
+      background: white;
+      border-color: white;
+    }
+
+    .checkbox::after {
+      content: '✓';
+      color: #667eea;
+      font-size: 18px;
+      font-weight: bold;
+      display: none;
+    }
+
+    .checklist li.checked .checkbox::after {
+      display: block;
+    }
+
+    .demo-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .demo-table th,
+    .demo-table td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .demo-table th {
+      background: #f5f7fa;
+      color: #303133;
+      font-weight: 600;
+      height: 48px;
+    }
+
+    .demo-table td {
+      background: white;
+      height: 48px;
+    }
+
+    .demo-table tr:nth-child(even) td {
+      background: #fafafa;
+    }
+
+    .fixed-col {
+      background: #fff9e6 !important;
+      font-weight: bold;
+    }
+
+    .commands {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .commands h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+
+    .command-item {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border-left: 4px solid #667eea;
+    }
+
+    .command-item h4 {
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .command-item code {
+      display: block;
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+
+    .progress {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 40px;
+      background: #e9ecef;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+
+    .status {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .alert {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .alert-info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      color: #0d47a1;
+    }
+
+    .alert-success {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      color: #1b5e20;
+    }
+
+    .alert-warning {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      color: #e65100;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 表格对齐验证助手</h1>
+    <p class="subtitle">点击下方的检查项，验证表格是否正确对齐</p>
+
+    <div class="alert alert-info">
+      <strong>💡 使用说明：</strong> 打开"工序管理"页面，切换到"开卡数据查看"标签，然后逐项检查下面的内容，点击完成打勾。
+    </div>
+
+    <h2 style="color: #667eea; margin-bottom: 20px;">✅ 对齐检查清单</h2>
+    <ul class="checklist" id="checklist">
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>表格正常显示，没有加载错误</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>第一列是"管道序号"，显示数字 1, 2, 3...</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>第二列是"管道编号"，显示 AV-32130, AV-32140...</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>第三列开始是工序名称（搭架子、组对、PT...）</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>列名和数据行垂直对齐，没有错位</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>固定列（管道序号、管道编号）有明显的分隔线</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>横向滚动时，固定列保持固定且对齐</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>纵向滚动时，表头保持固定</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>所有行高度一致，没有高低不平</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>管道序号按升序排列（1, 2, 3...不是1, 10, 2...）</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>没有重复显示列名的数据行</span>
+      </li>
+      <li onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <span>工序列的数据正确显示（有数字或空）</span>
+      </li>
+    </ul>
+
+    <div class="progress">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+      </div>
+      <div class="status" id="status">未开始检查</div>
+    </div>
+
+    <h2 style="color: #667eea; margin: 30px 0 20px;">📊 期望的表格结构示例</h2>
+    <div style="overflow-x: auto;">
+      <table class="demo-table">
+        <thead>
+          <tr>
+            <th class="fixed-col">管道序号</th>
+            <th class="fixed-col">管道编号</th>
+            <th>搭架子</th>
+            <th>组对</th>
+            <th>PT（渗透）</th>
+            <th>MT（磁粉）</th>
+            <th>焊接</th>
+            <th>...</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="fixed-col">1</td>
+            <td class="fixed-col">AV-32130</td>
+            <td>2</td>
+            <td>2</td>
+            <td>2</td>
+            <td>2</td>
+            <td>18</td>
+            <td>...</td>
+          </tr>
+          <tr>
+            <td class="fixed-col">2</td>
+            <td class="fixed-col">AV-32140</td>
+            <td>2</td>
+            <td>2</td>
+            <td>2</td>
+            <td>2</td>
+            <td>18</td>
+            <td>...</td>
+          </tr>
+          <tr>
+            <td class="fixed-col">3</td>
+            <td class="fixed-col">AV-32150</td>
+            <td>2</td>
+            <td>2</td>
+            <td>2</td>
+            <td>2</td>
+            <td>18</td>
+            <td>...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color: #666; font-size: 14px; margin-top: 10px;">
+      <strong>注意：</strong> 黄色背景的列是固定列，应该在横向滚动时保持固定。
+    </p>
+
+    <div class="commands">
+      <h3>🛠️ 常用排查命令</h3>
+      
+      <div class="command-item">
+        <h4>1️⃣ 强制刷新表格布局（在浏览器Console中执行）</h4>
+        <code>// 打开浏览器开发者工具（F12），在Console标签中执行：
+const table = document.querySelector('.pipeline-table').__vue__;
+if (table && table.$refs.pipelineTable) {
+  table.$refs.pipelineTable.doLayout();
+  console.log('✅ 表格布局已刷新');
+} else {
+  console.error('❌ 找不到表格组件');
+}</code>
+      </div>
+
+      <div class="command-item">
+        <h4>2️⃣ 清理数据库中的表头行（在MySQL中执行）</h4>
+        <code>-- 删除管道编号为"管道编号"的表头行
+DELETE FROM pipeline_card WHERE pipeline_code = '管道编号';
+
+-- 验证删除结果
+SELECT COUNT(*) FROM pipeline_card;</code>
+      </div>
+
+      <div class="command-item">
+        <h4>3️⃣ 检查数据是否正确排序（在MySQL中执行）</h4>
+        <code>-- 查看前10条记录，检查排序
+SELECT card_no, pipeline_code 
+FROM pipeline_card 
+ORDER BY CAST(card_no AS UNSIGNED) ASC 
+LIMIT 10;</code>
+      </div>
+    </div>
+
+    <div class="alert alert-success" id="successAlert" style="display: none;">
+      <strong>🎉 恭喜！</strong> 所有检查项都已完成，表格对齐应该是正确的。如果还有问题，请查看上面的排查命令。
+    </div>
+
+    <div class="alert alert-warning" id="warningAlert" style="display: none;">
+      <strong>⚠️ 注意：</strong> 如果发现对齐问题，请按照上面的"常用排查命令"进行处理，然后刷新页面（Ctrl + F5）重新检查。
+    </div>
+  </div>
+
+  <script>
+    function toggleCheck(element) {
+      element.classList.toggle('checked');
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const total = document.querySelectorAll('.checklist li').length;
+      const checked = document.querySelectorAll('.checklist li.checked').length;
+      const percentage = Math.round((checked / total) * 100);
+      
+      const progressFill = document.getElementById('progressFill');
+      const status = document.getElementById('status');
+      const successAlert = document.getElementById('successAlert');
+      const warningAlert = document.getElementById('warningAlert');
+      
+      progressFill.style.width = percentage + '%';
+      progressFill.textContent = percentage + '%';
+      
+      if (percentage === 0) {
+        status.textContent = '未开始检查';
+        status.style.color = '#999';
+        successAlert.style.display = 'none';
+        warningAlert.style.display = 'none';
+      } else if (percentage < 50) {
+        status.textContent = '检查进行中... ' + checked + '/' + total;
+        status.style.color = '#ff9800';
+        successAlert.style.display = 'none';
+        warningAlert.style.display = 'block';
+      } else if (percentage < 100) {
+        status.textContent = '即将完成... ' + checked + '/' + total;
+        status.style.color = '#4caf50';
+        successAlert.style.display = 'none';
+        warningAlert.style.display = 'block';
+      } else {
+        status.textContent = '✅ 检查完成！';
+        status.style.color = '#4caf50';
+        successAlert.style.display = 'block';
+        warningAlert.style.display = 'none';
+      }
+    }
+
+    // 初始化
+    updateProgress();
+  </script>
+</body>
+</html>
+

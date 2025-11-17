@@ -11,6 +11,12 @@
             <p class="page-subtitle">管理各工作点的生产工序信息，包括时长、阶段、团队分配等</p>
           </div>
           <div class="header-actions">
+            <el-button type="warning" icon="el-icon-setting" @click="showRuleConfigDialog" class="rule-btn">
+              规则配置
+            </el-button>
+            <el-button type="success" icon="el-icon-upload2" @click="showImportDialog" class="import-btn">
+              导入开卡Excel
+            </el-button>
             <el-button type="primary" icon="el-icon-plus" @click="add" class="add-btn">
               新增工序
             </el-button>
@@ -18,26 +24,56 @@
         </div>
       </div>
 
-      <!-- 工作点标签页 -->
-      <div class="workpoint-tabs-section">
-        <el-card class="tabs-card" shadow="never">
-          <el-tabs v-model="activeWorkpoint" type="card" @tab-click="handleWorkpointChange">
-            <el-tab-pane 
-              v-for="wp in workpoints" 
-              :key="wp.id" 
-              :label="wp.name" 
-              :name="wp.id">
+      <!-- 主功能标签页（工序管理 vs 开卡数据查看） -->
+      <div class="main-tabs-section">
+        <el-card class="main-tabs-card" shadow="never">
+          <el-tabs v-model="activeMainTab" type="border-card" @tab-click="handleMainTabChange">
+            <!-- 工序管理标签页 -->
+            <el-tab-pane label="工序管理" name="process">
               <template #label>
-                <span class="tab-label">
-                  <i class="el-icon-location"></i>
-                  {{ wp.name }}
-                  <el-badge :value="wp.count" class="tab-badge" v-if="wp.count > 0"></el-badge>
+                <span class="main-tab-label">
+                  <i class="el-icon-s-operation"></i>
+                  工序管理
+                </span>
+              </template>
+            </el-tab-pane>
+            
+            <!-- 开卡数据查看标签页 -->
+            <el-tab-pane label="开卡数据查看" name="pipeline">
+              <template #label>
+                <span class="main-tab-label">
+                  <i class="el-icon-document"></i>
+                  开卡数据查看
+                  <el-badge :value="pipelineCardTotal" class="main-tab-badge" v-if="pipelineCardTotal > 0"></el-badge>
                 </span>
               </template>
             </el-tab-pane>
           </el-tabs>
         </el-card>
       </div>
+
+      <!-- 工序管理内容（原有内容） -->
+      <div v-if="activeMainTab === 'process'">
+        <!-- 工作点标签页 -->
+        <div class="workpoint-tabs-section">
+          <el-card class="tabs-card" shadow="never">
+            <el-tabs v-model="activeWorkpoint" type="card" @tab-click="handleWorkpointChange">
+              <el-tab-pane 
+                v-for="wp in workpoints" 
+                :key="wp.id" 
+                :label="wp.name" 
+                :name="wp.id">
+                <template #label>
+                  <span class="tab-label">
+                    <i class="el-icon-location"></i>
+                    {{ wp.name }}
+                    <el-badge :value="wp.count" class="tab-badge" v-if="wp.count > 0"></el-badge>
+                  </span>
+                </template>
+              </el-tab-pane>
+            </el-tabs>
+          </el-card>
+        </div>
   
       <!-- 搜索过滤区域 -->
       <div class="filter-section">
@@ -385,6 +421,398 @@
           </el-button>
         </span>
       </el-dialog>
+      </div>
+
+      <!-- 开卡数据查看内容 -->
+      <div v-if="activeMainTab === 'pipeline'" class="pipeline-section">
+        <!-- 搜索过滤区域 -->
+        <div class="filter-section">
+          <el-card class="filter-card" shadow="never">
+            <div class="filter-content">
+              <div class="filter-left">
+                <div class="filter-item">
+                  <label class="filter-label">管道编号：</label>
+                  <el-input 
+                    v-model="pipelineSearchCode" 
+                    placeholder="请输入管道编号搜索" 
+                    suffix-icon="el-icon-search" 
+                    class="filter-input"
+                    @keyup.enter.native="loadPipelineCards"
+                    clearable>
+                  </el-input>
+                </div>
+                <div class="filter-item">
+                  <label class="filter-label">状态：</label>
+                  <el-select v-model="pipelineStatus" placeholder="请选择状态" class="filter-select" clearable>
+                    <el-option label="待开始" value="0"></el-option>
+                    <el-option label="进行中" value="1"></el-option>
+                    <el-option label="已完成" value="2"></el-option>
+                  </el-select>
+                </div>
+              </div>
+              <div class="filter-actions">
+                <el-button type="primary" icon="el-icon-search" @click="loadPipelineCards">
+                  查询
+                </el-button>
+                <el-button icon="el-icon-refresh" @click="resetPipelineSearch">
+                  重置
+                </el-button>
+                <el-button 
+                  type="danger" 
+                  icon="el-icon-delete" 
+                  @click="batchDeletePipelines"
+                  :disabled="pipelineSelection.length === 0">
+                  批量删除 ({{ pipelineSelection.length }})
+                </el-button>
+              </div>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- Excel样式表格 -->
+        <div class="table-section">
+          <el-card class="table-card" shadow="never">
+            <div class="table-header">
+              <div class="table-title">
+                <i class="el-icon-document"></i>
+                管道开卡数据表
+              </div>
+              <div class="table-info">
+                共 <span class="info-number">{{ pipelineCardTotal }}</span> 条记录
+              </div>
+            </div>
+            
+            <el-table 
+              ref="pipelineTable"
+              :data="pipelineCardData"
+              class="pipeline-table"
+              stripe
+              border
+              height="700"
+              @selection-change="handlePipelineSelectionChange">
+              
+              <el-table-column type="selection" width="55" align="center" fixed="left"></el-table-column>
+              
+              <el-table-column 
+                prop="cardNo" 
+                label="管道序号" 
+                width="120" 
+                align="center" 
+                fixed="left"
+                class-name="border-right-column">
+              </el-table-column>
+              
+              <el-table-column 
+                prop="pipelineCode" 
+                label="管道编号" 
+                width="150" 
+                align="center" 
+                fixed="left"
+                class-name="border-right-column">
+              </el-table-column>
+              
+              <!-- 16个工序列（根据后端实际返回的process_code） -->
+              <el-table-column prop="scaffold" label="搭架子" width="100" align="center"></el-table-column>
+              <el-table-column prop="remove_insulation" label="拆保温" width="100" align="center"></el-table-column>
+              <el-table-column prop="grinding" label="打磨" width="100" align="center"></el-table-column>
+              <el-table-column prop="macro_inspection" label="宏观检查" width="120" align="center"></el-table-column>
+              <el-table-column prop="thickness_test" label="测厚" width="100" align="center"></el-table-column>
+              <el-table-column prop="rt_test" label="RT检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="mt_test" label="MT检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="pt_test" label="PT检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="ut_test" label="UT检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="other_ndt" label="其他NDT" width="120" align="center"></el-table-column>
+              <el-table-column prop="hardness_test" label="硬度测试" width="120" align="center"></el-table-column>
+              <el-table-column prop="metallography" label="金相检验" width="120" align="center"></el-table-column>
+              <el-table-column prop="ferrite_test" label="铁素体测定" width="140" align="center"></el-table-column>
+              <el-table-column prop="result_evaluation" label="结果评定" width="120" align="center"></el-table-column>
+              <el-table-column prop="rework" label="返工" width="100" align="center"></el-table-column>
+              <el-table-column prop="final_confirm" label="最终确认" width="120" align="center"></el-table-column>
+              
+              <el-table-column label="操作" width="150" align="center" fixed="right">
+                <template slot-scope="scope">
+                  <el-button type="danger" size="mini" icon="el-icon-delete" @click="deletePipelineCard(scope.row)">
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pagination-section">
+              <el-pagination
+                @size-change="handlePipelineSizeChange"
+                @current-change="handlePipelineCurrentChange"
+                :current-page="pipelinePageNum"
+                :page-sizes="[10, 20, 50, 100]"
+                :page-size="pipelinePageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="pipelineCardTotal"
+                class="pagination">
+              </el-pagination>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- Excel导入对话框 -->
+      <el-dialog
+        title="导入管道开卡Excel"
+        :visible.sync="importDialogVisible"
+        width="600px"
+        :close-on-click-modal="false"
+        append-to-body
+        class="import-dialog">
+        
+        <div class="import-content">
+          <div class="import-tips">
+            <el-alert
+              title="导入说明"
+              type="info"
+              :closable="false"
+              show-icon>
+              <div slot="description">
+                <p>1. 请确保Excel文件格式正确（.xlsx或.xls）</p>
+                <p>2. 第1列：管道序号，第2列：管道编号（不可重复）</p>
+                <p>3. 第3-18列：各工序需求（填写数字表示次数，留空表示不需要）</p>
+                <p>4. 文件大小不超过10MB</p>
+              </div>
+            </el-alert>
+          </div>
+
+          <div class="upload-section">
+            <el-upload
+              ref="upload"
+              class="upload-demo"
+              drag
+              action="#"
+              :auto-upload="false"
+              :on-change="handleFileChange"
+              :on-remove="handleFileRemove"
+              :file-list="fileList"
+              :limit="1"
+              accept=".xlsx,.xls">
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">
+                将Excel文件拖到此处，或<em>点击选择</em>
+              </div>
+              <div class="el-upload__tip" slot="tip">
+                支持 .xlsx 和 .xls 格式，文件不超过10MB
+              </div>
+            </el-upload>
+          </div>
+
+          <!-- 导入进度 -->
+          <div v-if="importing" class="import-progress">
+            <el-progress :percentage="importProgress" :status="importStatus"></el-progress>
+            <p class="progress-text">{{ importMessage }}</p>
+          </div>
+
+          <!-- 导入结果 -->
+          <div v-if="importResult" class="import-result">
+            <el-alert
+              :title="importResult.success ? '导入成功' : '导入失败'"
+              :type="importResult.success ? 'success' : 'error'"
+              :closable="false"
+              show-icon>
+              <div slot="description">
+                <p v-if="importResult.success">
+                  成功导入 {{ importResult.successCount }} 条记录
+                  <span v-if="importResult.failCount > 0">，失败 {{ importResult.failCount }} 条</span>
+                </p>
+                <div v-if="importResult.errors && importResult.errors.length > 0" class="error-list">
+                  <p><strong>错误详情：</strong></p>
+                  <ul>
+                    <li v-for="(error, index) in importResult.errors" :key="index">{{ error }}</li>
+                  </ul>
+                </div>
+              </div>
+            </el-alert>
+          </div>
+        </div>
+
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="closeImportDialog" :disabled="importing">
+            取 消
+          </el-button>
+          <el-button 
+            type="primary" 
+            @click="doImport" 
+            :loading="importing"
+            :disabled="fileList.length === 0">
+            {{ importing ? '导入中...' : '开始导入' }}
+          </el-button>
+        </span>
+      </el-dialog>
+
+      <!-- 规则配置对话框 -->
+      <el-dialog
+        title="工序规则配置"
+        :visible.sync="ruleConfigDialogVisible"
+        width="90%"
+        :close-on-click-modal="false"
+        append-to-body
+        class="rule-config-dialog">
+        
+        <div class="rule-config-content">
+          <!-- 操作按钮 -->
+          <div class="rule-actions">
+            <el-alert
+              v-if="!ruleEditable"
+              title="当前为只读模式，点击'编辑'按钮进行修改"  
+              type="info"
+              :closable="false"
+              show-icon>
+            </el-alert>
+            <el-alert
+              v-else
+              title="当前为编辑模式，修改后请点击'保存'按钮"
+              type="warning"
+              :closable="false"
+              show-icon>
+            </el-alert>
+            
+            <div class="action-buttons">
+              <el-button 
+                v-if="!ruleEditable" 
+                type="primary" 
+                icon="el-icon-edit" 
+                @click="enableRuleEdit">
+                编辑
+              </el-button>
+              <template v-else>
+                <el-button 
+                  type="success" 
+                  icon="el-icon-check" 
+                  @click="saveRuleConfig"
+                  :loading="ruleSaving">
+                  {{ ruleSaving ? '保存中...' : '保存' }}
+                </el-button>
+                <el-button 
+                  type="info" 
+                  icon="el-icon-close" 
+                  @click="cancelRuleEdit">
+                  取消
+                </el-button>
+              </template>
+            </div>
+          </div>
+
+          <!-- 规则配置表格 -->
+          <el-table
+            :data="processRules"
+            class="rule-config-table"
+            border
+            stripe
+            max-height="600">
+            
+            <el-table-column 
+              prop="processName" 
+              label="工序名称" 
+              width="150" 
+              align="center"
+              fixed>
+            </el-table-column>
+
+            <el-table-column label="基础工作时长" width="180" align="center">
+              <template slot-scope="scope">
+                <el-input-number
+                  v-if="ruleEditable"
+                  v-model="scope.row.baseDuration"
+                  :min="0"
+                  :max="999"
+                  :precision="2"
+                  :step="0.5"
+                  size="small"
+                  style="width: 100px">
+                </el-input-number>
+                <span v-else>{{ scope.row.baseDuration }}</span>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="时长单位" width="120" align="center">
+              <template slot-scope="scope">
+                <el-select
+                  v-if="ruleEditable"
+                  v-model="scope.row.durationUnit"
+                  size="small"
+                  style="width: 100%">
+                  <el-option label="小时" value="小时"></el-option>
+                  <el-option label="分钟" value="分钟"></el-option>
+                  <el-option label="天" value="天"></el-option>
+                </el-select>
+                <span v-else>{{ scope.row.durationUnit }}</span>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="阶段顺序" width="120" align="center">
+              <template slot-scope="scope">
+                <el-input-number
+                  v-if="ruleEditable"
+                  v-model="scope.row.stageOrder"
+                  :min="1"
+                  :max="20"
+                  size="small"
+                  style="width: 100px">
+                </el-input-number>
+                <span v-else>{{ scope.row.stageOrder }}</span>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="所属团队" width="140" align="center">
+              <template slot-scope="scope">
+                <el-select
+                  v-if="ruleEditable"
+                  v-model="scope.row.teamName"
+                  size="small"
+                  style="width: 100%">
+                  <el-option label="团队1" value="team1"></el-option>
+                  <el-option label="团队2" value="team2"></el-option>
+                  <el-option label="团队3" value="team3"></el-option>
+                  <el-option label="团队4" value="team4"></el-option>
+                  <el-option label="团队5" value="team5"></el-option>
+                  <el-option label="团队6" value="team6"></el-option>
+                </el-select>
+                <span v-else>{{ formatTeamName(scope.row.teamName) }}</span>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="团队规模（人数）" width="150" align="center">
+              <template slot-scope="scope">
+                <el-input-number
+                  v-if="ruleEditable"
+                  v-model="scope.row.teamSize"
+                  :min="1"
+                  :max="100"
+                  size="small"
+                  style="width: 100px">
+                </el-input-number>
+                <span v-else>{{ scope.row.teamSize }} 人</span>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="备注说明" min-width="250" align="center">
+              <template slot-scope="scope">
+                <el-input
+                  v-if="ruleEditable"
+                  v-model="scope.row.description"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="请输入备注"
+                  size="small"
+                  maxlength="200"
+                  show-word-limit>
+                </el-input>
+                <span v-else>{{ scope.row.description || '-' }}</span>
+              </template>
+            </el-table-column>
+
+          </el-table>
+        </div>
+
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="ruleConfigDialogVisible = false">关闭</el-button>
+        </span>
+      </el-dialog>
     </div>
   </template>
   
@@ -466,6 +894,33 @@
             {required: true, message: '请输入团队规模', trigger: 'blur'}
           ]
         },
+        // Excel导入相关
+        importDialogVisible: false,
+        fileList: [],
+        importing: false,
+        importProgress: 0,
+        importStatus: '',
+        importMessage: '',
+        importResult: null,
+        
+        // 主标签页相关
+        activeMainTab: 'process', // 当前激活的主标签：process或pipeline
+        
+        // 开卡数据查看相关
+        pipelineCardData: [], // 开卡数据列表
+        pipelineCardTotal: 0, // 开卡数据总数
+        pipelinePageNum: 1, // 当前页码
+        pipelinePageSize: 20, // 每页数量
+        pipelineSearchCode: '', // 管道编号搜索
+        pipelineStatus: '', // 状态筛选
+        pipelineSelection: [], // 选中的开卡数据
+        
+        // 规则配置相关
+        ruleConfigDialogVisible: false, // 规则配置对话框显示状态
+        ruleEditable: false, // 是否可编辑
+        ruleSaving: false, // 是否正在保存
+        processRules: [], // 工序规则列表
+        processRulesBackup: [] // 工序规则备份（用于取消编辑时恢复）
       };
     },
     methods: {
@@ -711,6 +1166,379 @@
       handleCurrentChange(val) {
         this.pageNum = val;
         this.loadPost();
+      },
+      
+      // ========== Excel导入相关方法 ==========
+      
+      // 显示导入对话框
+      showImportDialog() {
+        this.importDialogVisible = true;
+        this.fileList = [];
+        this.importResult = null;
+        this.importing = false;
+        this.importProgress = 0;
+        this.importMessage = '';
+      },
+      
+      // 关闭导入对话框
+      closeImportDialog() {
+        this.importDialogVisible = false;
+        this.fileList = [];
+        this.importResult = null;
+        this.importing = false;
+        this.importProgress = 0;
+        this.importMessage = '';
+      },
+      
+      // 文件选择变化
+      handleFileChange(file, fileList) {
+        this.fileList = fileList;
+        this.importResult = null;
+      },
+      
+      // 文件移除
+      handleFileRemove(file, fileList) {
+        this.fileList = fileList;
+      },
+      
+      // 执行导入
+      doImport() {
+        if (this.fileList.length === 0) {
+          this.$message.warning('请先选择要导入的Excel文件');
+          return;
+        }
+
+        const file = this.fileList[0].raw;
+        
+        // 验证文件类型
+        const fileName = file.name;
+        if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+          this.$message.error('只支持Excel文件格式（.xlsx或.xls）');
+          return;
+        }
+
+        // 验证文件大小（10MB）
+        if (file.size > 10 * 1024 * 1024) {
+          this.$message.error('文件大小不能超过10MB');
+          return;
+        }
+
+        // 开始导入
+        this.importing = true;
+        this.importProgress = 0;
+        this.importStatus = '';
+        this.importMessage = '正在上传文件...';
+        this.importResult = null;
+
+        // 构建FormData
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // 模拟进度
+        const progressInterval = setInterval(() => {
+          if (this.importProgress < 90) {
+            this.importProgress += 10;
+          }
+        }, 200);
+
+        // 发送请求
+        this.$axios.post(this.$httpUrl + '/pipelineCard/import', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }).then(res => res.data).then(res => {
+          clearInterval(progressInterval);
+          this.importProgress = 100;
+          this.importing = false;
+
+          if (res.code === 200) {
+            this.importStatus = 'success';
+            this.importMessage = '导入完成！';
+            this.importResult = res.data;
+
+            // 如果完全成功，2秒后关闭对话框
+            if (res.data.failCount === 0) {
+              setTimeout(() => {
+                this.closeImportDialog();
+                this.$message.success('导入成功！');
+              }, 2000);
+            }
+          } else {
+            this.importStatus = 'exception';
+            this.importMessage = '导入失败';
+            this.importResult = {
+              success: false,
+              message: res.msg || '导入失败',
+              errors: [res.msg || '未知错误']
+            };
+            this.$message.error(res.msg || '导入失败');
+          }
+        }).catch(error => {
+          clearInterval(progressInterval);
+          this.importProgress = 100;
+          this.importStatus = 'exception';
+          this.importing = false;
+          this.importMessage = '导入失败';
+          
+          console.error('导入失败:', error);
+          
+          this.importResult = {
+            success: false,
+            message: '网络错误或服务器异常',
+            errors: [error.message || '未知错误']
+          };
+          this.$message.error('导入失败：' + (error.message || '网络错误'));
+        });
+      },
+      
+      // ========== 开卡数据查看相关方法 ==========
+      
+      // 主标签页切换
+      handleMainTabChange(tab) {
+        if (tab.name === 'pipeline') {
+          // 切换到开卡数据查看时，加载数据
+          this.loadPipelineCards();
+        }
+      },
+      
+      // 加载开卡数据
+      loadPipelineCards() {
+        this.$axios.post(this.$httpUrl + '/pipelineCard/listPageFlat', {
+          pageNum: this.pipelinePageNum,
+          pageSize: this.pipelinePageSize,
+          param: {
+            pipelineCode: this.pipelineSearchCode,
+            status: this.pipelineStatus
+          }
+        }).then(res => res.data).then(res => {
+          if (res.code === 200) {
+            // 获取原始数据
+            let data = res.data.data || [];
+            
+            // 调试：打印第一条数据的所有字段
+            if (data.length > 0) {
+              console.log('===== 开卡数据第一行 =====');
+              console.log('所有字段：', Object.keys(data[0]));
+              console.log('完整数据：', data[0]);
+              console.log('========================');
+            }
+            
+            // 过滤掉表头行（管道编号为"管道编号"的记录）
+            this.pipelineCardData = data.filter(item => 
+              item.pipelineCode !== '管道编号' && 
+              item.cardNo !== '管道序号'
+            );
+            
+            console.log(`原始数据：${data.length}条，过滤后：${this.pipelineCardData.length}条`);
+            console.log(`后端总数：${res.data.total}`);
+            
+            // 不调整总数，直接使用后端返回的总数
+            // 因为后端已经知道实际的总记录数
+            this.pipelineCardTotal = res.data.total;
+            
+            // 强制刷新表格布局（多次刷新确保对齐）
+            this.$nextTick(() => {
+              if (this.$refs && this.$refs.pipelineTable) {
+                this.$refs.pipelineTable.doLayout();
+                // 延迟再次刷新确保固定列对齐
+                setTimeout(() => {
+                  this.$refs.pipelineTable.doLayout();
+                }, 100);
+                setTimeout(() => {
+                  this.$refs.pipelineTable.doLayout();
+                }, 300);
+              }
+            });
+          } else {
+            this.$message.error('加载开卡数据失败：' + res.msg);
+          }
+        }).catch(error => {
+          console.error('加载开卡数据失败:', error);
+          this.$message.error('加载开卡数据失败');
+        });
+      },
+      
+      // 重置搜索
+      resetPipelineSearch() {
+        this.pipelineSearchCode = '';
+        this.pipelineStatus = '';
+        this.pipelinePageNum = 1;
+        this.loadPipelineCards();
+      },
+      
+      // 分页-每页数量变化
+      handlePipelineSizeChange(val) {
+        this.pipelinePageSize = val;
+        this.pipelinePageNum = 1;
+        this.loadPipelineCards();
+      },
+      
+      // 分页-页码变化
+      handlePipelineCurrentChange(val) {
+        this.pipelinePageNum = val;
+        this.loadPipelineCards();
+      },
+      
+      // 选择变化
+      handlePipelineSelectionChange(val) {
+        this.pipelineSelection = val;
+      },
+      
+      // 删除单条开卡数据
+      deletePipelineCard(row) {
+        this.$confirm(`确定要删除管道编号为 "${row.pipelineCode}" 的开卡数据吗？`, '删除确认', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          this.$axios.delete(this.$httpUrl + '/pipelineCard/delete/' + row.id)
+            .then(res => res.data)
+            .then(res => {
+              if (res.code === 200) {
+                this.$message.success('删除成功');
+                this.loadPipelineCards();
+              } else {
+                this.$message.error('删除失败：' + res.msg);
+              }
+            }).catch(error => {
+              console.error('删除失败:', error);
+              this.$message.error('删除失败');
+            });
+        }).catch(() => {
+          // 取消删除
+        });
+      },
+      
+      // 批量删除
+      batchDeletePipelines() {
+        if (this.pipelineSelection.length === 0) {
+          this.$message.warning('请先选择要删除的数据');
+          return;
+        }
+        
+        this.$confirm(`确定要删除选中的 ${this.pipelineSelection.length} 条开卡数据吗？`, '批量删除确认', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          const ids = this.pipelineSelection.map(item => item.id);
+          this.$axios.post(this.$httpUrl + '/pipelineCard/deleteBatch', ids)
+            .then(res => res.data)
+            .then(res => {
+              if (res.code === 200) {
+                this.$message.success('批量删除成功');
+                this.loadPipelineCards();
+              } else {
+                this.$message.error('批量删除失败：' + res.msg);
+              }
+            }).catch(error => {
+              console.error('批量删除失败:', error);
+              this.$message.error('批量删除失败');
+            });
+        }).catch(() => {
+          // 取消删除
+        });
+      },
+      
+      // ========== 规则配置相关方法 ==========
+      
+      // 显示规则配置对话框
+      showRuleConfigDialog() {
+        this.ruleConfigDialogVisible = true;
+        this.ruleEditable = false;
+        this.loadProcessRules();
+      },
+      
+      // 加载工序规则
+      loadProcessRules() {
+        this.$axios.get(this.$httpUrl + '/processRule/list')
+          .then(res => res.data)
+          .then(res => {
+            if (res.code === 200) {
+              this.processRules = res.data;
+              // 备份原始数据
+              this.processRulesBackup = JSON.parse(JSON.stringify(res.data));
+            } else {
+              this.$message.error('加载规则失败：' + res.msg);
+            }
+          }).catch(error => {
+            console.error('加载规则失败:', error);
+            this.$message.error('加载规则失败');
+          });
+      },
+      
+      // 启用编辑模式
+      enableRuleEdit() {
+        this.ruleEditable = true;
+        // 备份当前数据
+        this.processRulesBackup = JSON.parse(JSON.stringify(this.processRules));
+      },
+      
+      // 取消编辑
+      cancelRuleEdit() {
+        this.$confirm('确定要取消编辑吗？未保存的修改将丢失。', '取消确认', {
+          confirmButtonText: '确定',
+          cancelButtonText: '继续编辑',
+          type: 'warning'
+        }).then(() => {
+          // 恢复备份数据
+          this.processRules = JSON.parse(JSON.stringify(this.processRulesBackup));
+          this.ruleEditable = false;
+        }).catch(() => {
+          // 继续编辑
+        });
+      },
+      
+      // 保存规则配置
+      saveRuleConfig() {
+        // 验证数据
+        for (let rule of this.processRules) {
+          if (!rule.baseDuration || rule.baseDuration < 0) {
+            this.$message.error(`工序"${rule.processName}"的基础工作时长无效`);
+            return;
+          }
+          if (!rule.stageOrder || rule.stageOrder < 1) {
+            this.$message.error(`工序"${rule.processName}"的阶段顺序无效`);
+            return;
+          }
+          if (!rule.teamSize || rule.teamSize < 1) {
+            this.$message.error(`工序"${rule.processName}"的团队规模无效`);
+            return;
+          }
+        }
+        
+        this.ruleSaving = true;
+        
+        this.$axios.post(this.$httpUrl + '/processRule/batchUpdate', this.processRules)
+          .then(res => res.data)
+          .then(res => {
+            if (res.code === 200) {
+              this.$message.success('保存成功');
+              this.ruleEditable = false;
+              // 重新加载数据
+              this.loadProcessRules();
+            } else {
+              this.$message.error('保存失败：' + res.msg);
+            }
+          }).catch(error => {
+            console.error('保存失败:', error);
+            this.$message.error('保存失败');
+          }).finally(() => {
+            this.ruleSaving = false;
+          });
+      },
+      
+      // 格式化团队名称
+      formatTeamName(teamName) {
+        const teamMap = {
+          'team1': '团队1',
+          'team2': '团队2',
+          'team3': '团队3',
+          'team4': '团队4',
+          'team5': '团队5',
+          'team6': '团队6'
+        };
+        return teamMap[teamName] || teamName;
       }
     },
     beforeMount() {
@@ -831,14 +1659,14 @@
     gap: 12px;
   }
   
-  .add-btn {
+  .import-btn, .add-btn {
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
     backdrop-filter: blur(10px);
   }
   
-  .add-btn:hover {
+  .import-btn:hover, .add-btn:hover {
     background: rgba(255, 255, 255, 0.3);
     border-color: rgba(255, 255, 255, 0.5);
   }
@@ -1134,6 +1962,269 @@
   .process-dialog :deep(.el-dialog) {
     position: relative;
     z-index: 2001;
+  }
+
+  /* Excel导入对话框样式 */
+  .import-dialog :deep(.el-dialog) {
+    border-radius: 12px;
+  }
+
+  .import-dialog :deep(.el-dialog__header) {
+    background: linear-gradient(135deg, #67c23a, #85ce61);
+    color: white;
+    padding: 20px 24px;
+  }
+
+  .import-dialog :deep(.el-dialog__title) {
+    color: white;
+    font-weight: 600;
+  }
+
+  .import-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
+    color: white;
+  }
+
+  .import-content {
+    padding: 20px;
+  }
+
+  .import-tips {
+    margin-bottom: 20px;
+  }
+
+  .import-tips :deep(.el-alert__description p) {
+    margin: 5px 0;
+    line-height: 1.8;
+  }
+
+  .upload-section {
+    margin: 20px 0;
+  }
+
+  .upload-demo :deep(.el-upload-dragger) {
+    width: 100%;
+    height: 180px;
+  }
+
+  .import-progress {
+    margin: 20px 0;
+    text-align: center;
+  }
+
+  .progress-text {
+    margin-top: 10px;
+    color: #606266;
+    font-size: 14px;
+  }
+
+  .import-result {
+    margin-top: 20px;
+  }
+
+  .error-list {
+    margin-top: 10px;
+  }
+
+  .error-list ul {
+    margin: 10px 0;
+    padding-left: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .error-list li {
+    margin: 5px 0;
+    color: #f56c6c;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* 主标签页样式 */
+  .main-tabs-section {
+    margin-bottom: 20px;
+  }
+
+  .main-tabs-card {
+    border: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .main-tabs-card :deep(.el-card__body) {
+    padding: 0;
+  }
+
+  .main-tabs-card :deep(.el-tabs--border-card) {
+    border: none;
+    box-shadow: none;
+  }
+
+  .main-tabs-card :deep(.el-tabs__header) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    margin: 0;
+  }
+
+  .main-tabs-card :deep(.el-tabs__nav) {
+    border: none;
+  }
+
+  .main-tabs-card :deep(.el-tabs__item) {
+    color: rgba(255, 255, 255, 0.7);
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 0 30px;
+    height: 50px;
+    line-height: 50px;
+    transition: all 0.3s ease;
+  }
+
+  .main-tabs-card :deep(.el-tabs__item.is-active) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+    border-bottom: 3px solid #ffd700 !important;
+  }
+
+  .main-tabs-card :deep(.el-tabs__item:hover) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .main-tab-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .main-tab-badge {
+    margin-left: 8px;
+  }
+
+  .main-tab-badge :deep(.el-badge__content) {
+    background-color: #f56c6c;
+    border: 2px solid #fff;
+    border-radius: 12px;
+    padding: 0 6px;
+    height: 20px;
+    line-height: 16px;
+  }
+
+  /* 开卡数据表格样式 */
+  .pipeline-section {
+    margin-top: 20px;
+  }
+
+  .pipeline-table {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .pipeline-table :deep(.el-table__header-wrapper) {
+    background: #f5f7fa;
+  }
+
+  .pipeline-table :deep(.el-table th) {
+    background: #f5f7fa !important;
+    color: #303133;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 0;
+    height: 48px;
+  }
+
+  .pipeline-table :deep(.el-table td) {
+    padding: 10px 0;
+    height: 48px;
+    line-height: 28px;
+  }
+
+  /* 固定列右边框 */
+  .pipeline-table :deep(.border-right-column) {
+    border-right: 2px solid #dfe6ec !important;
+  }
+
+  .pipeline-table :deep(.el-table__fixed) {
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .pipeline-table :deep(.el-table__fixed-right) {
+    box-shadow: -2px 0 6px rgba(0, 0, 0, 0.08);
+  }
+
+  /* 确保固定列表头和主表头高度一致 */
+  .pipeline-table :deep(.el-table__fixed-header-wrapper .el-table__header thead) {
+    height: 48px;
+  }
+
+  .pipeline-table :deep(.el-table__header-wrapper .el-table__header thead) {
+    height: 48px;
+  }
+
+  /* 确保所有行高度一致 */
+  .pipeline-table :deep(.el-table__row) {
+    height: 48px !important;
+  }
+
+  .pipeline-table :deep(.el-table__fixed-body-wrapper .el-table__row) {
+    height: 48px !important;
+  }
+
+  /* 规则配置对话框样式 */
+  .rule-config-dialog :deep(.el-dialog__body) {
+    padding: 20px;
+  }
+
+  .rule-config-content {
+    width: 100%;
+  }
+
+  .rule-actions {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .rule-actions .el-alert {
+    flex: 1;
+  }
+
+  .action-buttons {
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+  }
+
+  .rule-config-table {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .rule-config-table :deep(.el-table th) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+  }
+
+  .rule-config-table :deep(.el-input-number) {
+    width: 100%;
+  }
+
+  .rule-config-table :deep(.el-switch) {
+    display: inline-block;
+  }
+
+  .rule-btn {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    color: white;
+    transition: all 0.3s ease;
+  }
+
+  .rule-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
   }
 
   /* 响应式设计 */

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.PipelineCardProcessMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.example.demo.entity.PipelineCardProcess">
+        <id column="id" property="id" />
+        <result column="card_id" property="cardId" />
+        <result column="process_name" property="processName" />
+        <result column="process_code" property="processCode" />
+        <result column="required_count" property="requiredCount" />
+        <result column="process_order" property="processOrder" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, card_id, process_name, process_code, required_count, process_order, create_time
+    </sql>
+
+</mapper>
+
