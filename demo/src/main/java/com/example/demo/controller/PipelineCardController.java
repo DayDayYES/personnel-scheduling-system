@@ -9,9 +9,13 @@ import com.example.demo.entity.PipelineCardProcess;
 import com.example.demo.service.PipelineCardProcessService;
 import com.example.demo.service.PipelineCardService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -296,15 +300,128 @@ public class PipelineCardController {
     }
 
     /**
-     * 下载Excel模板
+     * 下载Excel导入模板
+     * 生成带示例数据的Excel模板文件供用户下载
      * 
-     * @return 模板文件说明
+     * @return Excel文件流
      */
-    @GetMapping("/template")
-    public Result getTemplate() {
-        return Result.suc("Excel模板格式说明：" +
-                "\n第1列：管道序号" +
-                "\n第2列：管道编号" +
-                "\n第3-18列：各工序需求（填写数字表示需要执行的次数，留空表示不需要）");
+    @GetMapping("/downloadTemplate")
+    public ResponseEntity<byte[]> downloadTemplate() {
+        try {
+            // 创建工作簿
+            org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("管道数据");
+            
+            // 创建样式
+            org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.LIGHT_BLUE.getIndex());
+            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+            headerStyle.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            headerStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            headerStyle.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            headerStyle.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            
+            org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerFont.setFontHeightInPoints((short) 11);
+            headerStyle.setFont(headerFont);
+            
+            // 数据样式
+            org.apache.poi.ss.usermodel.CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+            dataStyle.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            dataStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            dataStyle.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            dataStyle.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+            
+            // 创建表头
+            org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+            String[] headers = {
+                "管道序号", "管道编号", "搭架子", "拆保温", "打磨", "宏观检查", "壁厚测定",
+                "RT（射线）检测", "MT（磁粉）检测", "PT（渗透）检测", "UT（超声）检测", "其他无损检测",
+                "硬度测试", "金相检验", "铁素体测定", "检验结果评定", "返修", "返修结果确认，合格报告出具"
+            };
+            
+            for (int i = 0; i < headers.length; i++) {
+                org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 15 * 256); // 设置列宽
+            }
+            
+            // 添加示例数据（3行）
+            String[][] exampleData = {
+                {"1", "AV-32130", "1", "1", "1", "1", "1", "", "2", "", "", "", "1", "", "1", "1", "", "1"},
+                {"2", "AV-32140", "1", "1", "1", "1", "1", "2", "", "2", "", "", "", "1", "", "1", "", "1"},
+                {"3", "AV-32150", "1", "1", "1", "1", "1", "", "", "", "2", "1", "1", "1", "1", "1", "", "1"}
+            };
+            
+            for (int i = 0; i < exampleData.length; i++) {
+                org.apache.poi.ss.usermodel.Row row = sheet.createRow(i + 1);
+                for (int j = 0; j < exampleData[i].length; j++) {
+                    org.apache.poi.ss.usermodel.Cell cell = row.createCell(j);
+                    String value = exampleData[i][j];
+                    if (!value.isEmpty()) {
+                        try {
+                            cell.setCellValue(Integer.parseInt(value));
+                        } catch (NumberFormatException e) {
+                            cell.setCellValue(value);
+                        }
+                    }
+                    cell.setCellStyle(dataStyle);
+                }
+            }
+            
+            // 添加说明行（第5行开始）
+            org.apache.poi.ss.usermodel.Row noteRow1 = sheet.createRow(5);
+            org.apache.poi.ss.usermodel.Cell noteCell1 = noteRow1.createCell(0);
+            noteCell1.setCellValue("填写说明：");
+            
+            org.apache.poi.ss.usermodel.Row noteRow2 = sheet.createRow(6);
+            org.apache.poi.ss.usermodel.Cell noteCell2 = noteRow2.createCell(0);
+            noteCell2.setCellValue("1. 管道序号：填写数字，如1、2、3...");
+            
+            org.apache.poi.ss.usermodel.Row noteRow3 = sheet.createRow(7);
+            org.apache.poi.ss.usermodel.Cell noteCell3 = noteRow3.createCell(0);
+            noteCell3.setCellValue("2. 管道编号：填写管道的唯一编号，不能重复");
+            
+            org.apache.poi.ss.usermodel.Row noteRow4 = sheet.createRow(8);
+            org.apache.poi.ss.usermodel.Cell noteCell4 = noteRow4.createCell(0);
+            noteCell4.setCellValue("3. 工序列：填写数字表示该工序需要的次数，留空表示不需要该工序");
+            
+            org.apache.poi.ss.usermodel.Row noteRow5 = sheet.createRow(9);
+            org.apache.poi.ss.usermodel.Cell noteCell5 = noteRow5.createCell(0);
+            noteCell5.setCellValue("4. 导入时请删除说明行（第6-10行），只保留表头和数据行");
+            
+            // 合并说明单元格
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(5, 5, 0, 5));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(6, 6, 0, 17));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(7, 7, 0, 17));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(8, 8, 0, 17));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(9, 9, 0, 17));
+            
+            // 写入字节流
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+            
+            byte[] bytes = outputStream.toByteArray();
+            
+            // 设置响应头
+            HttpHeaders httpHeaders = new HttpHeaders();
+            httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            httpHeaders.setContentDispositionFormData("attachment", 
+                java.net.URLEncoder.encode("管道数据导入模板.xlsx", "UTF-8"));
+            httpHeaders.setContentLength(bytes.length);
+            
+            return ResponseEntity.ok()
+                    .headers(httpHeaders)
+                    .body(bytes);
+                    
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

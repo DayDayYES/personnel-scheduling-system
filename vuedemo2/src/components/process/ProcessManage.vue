@@ -14,8 +14,11 @@
             <el-button type="warning" icon="el-icon-setting" @click="showRuleConfigDialog" class="rule-btn">
               规则配置
             </el-button>
+            <el-button type="success" icon="el-icon-download" @click="downloadTemplate" class="template-btn">
+              下载模板
+            </el-button>
             <el-button type="success" icon="el-icon-upload2" @click="showImportDialog" class="import-btn">
-              导入开卡Excel
+              导入Excel
             </el-button>
             <el-button type="primary" icon="el-icon-plus" @click="add" class="add-btn">
               新增工序
@@ -43,7 +46,7 @@
               <template #label>
                 <span class="main-tab-label">
                   <i class="el-icon-document"></i>
-                  开卡数据查看
+                  Excel数据查看
                   <el-badge :value="pipelineCardTotal" class="main-tab-badge" v-if="pipelineCardTotal > 0"></el-badge>
                 </span>
               </template>
@@ -516,18 +519,18 @@
               <el-table-column prop="remove_insulation" label="拆保温" width="100" align="center"></el-table-column>
               <el-table-column prop="grinding" label="打磨" width="100" align="center"></el-table-column>
               <el-table-column prop="macro_inspection" label="宏观检查" width="120" align="center"></el-table-column>
-              <el-table-column prop="thickness_test" label="测厚" width="100" align="center"></el-table-column>
-              <el-table-column prop="rt_test" label="RT检测" width="100" align="center"></el-table-column>
-              <el-table-column prop="mt_test" label="MT检测" width="100" align="center"></el-table-column>
-              <el-table-column prop="pt_test" label="PT检测" width="100" align="center"></el-table-column>
-              <el-table-column prop="ut_test" label="UT检测" width="100" align="center"></el-table-column>
-              <el-table-column prop="other_ndt" label="其他NDT" width="120" align="center"></el-table-column>
+              <el-table-column prop="thickness_test" label="壁厚测定" width="100" align="center"></el-table-column>
+              <el-table-column prop="rt_test" label="RT（射线）检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="mt_test" label="MT（磁粉）检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="pt_test" label="PT（渗透）检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="ut_test" label="UT（超声）检测" width="100" align="center"></el-table-column>
+              <el-table-column prop="other_ndt" label="其他无损检测" width="120" align="center"></el-table-column>
               <el-table-column prop="hardness_test" label="硬度测试" width="120" align="center"></el-table-column>
               <el-table-column prop="metallography" label="金相检验" width="120" align="center"></el-table-column>
               <el-table-column prop="ferrite_test" label="铁素体测定" width="140" align="center"></el-table-column>
-              <el-table-column prop="result_evaluation" label="结果评定" width="120" align="center"></el-table-column>
-              <el-table-column prop="rework" label="返工" width="100" align="center"></el-table-column>
-              <el-table-column prop="final_confirm" label="最终确认" width="120" align="center"></el-table-column>
+              <el-table-column prop="result_evaluation" label="检验结果评定" width="120" align="center"></el-table-column>
+              <el-table-column prop="rework" label="返修" width="100" align="center"></el-table-column>
+              <el-table-column prop="final_confirm" label="返修结果确认，合格报告出具" width="120" align="center"></el-table-column>
               
               <el-table-column label="操作" width="150" align="center" fixed="right">
                 <template slot-scope="scope">
@@ -556,7 +559,7 @@
 
       <!-- Excel导入对话框 -->
       <el-dialog
-        title="导入管道开卡Excel"
+        title="导入管道Excel"
         :visible.sync="importDialogVisible"
         width="600px"
         :close-on-click-modal="false"
@@ -575,6 +578,10 @@
                 <p>2. 第1列：管道序号，第2列：管道编号（不可重复）</p>
                 <p>3. 第3-18列：各工序需求（填写数字表示次数，留空表示不需要）</p>
                 <p>4. 文件大小不超过10MB</p>
+                <p style="margin-top: 10px; color: #e6a23c;">
+                  <i class="el-icon-warning"></i>
+                  <strong>提示：请先点击页面顶部的"下载模板"按钮获取标准模板</strong>
+                </p>
               </div>
             </el-alert>
           </div>
@@ -1178,6 +1185,45 @@
         this.importing = false;
         this.importProgress = 0;
         this.importMessage = '';
+      },
+      
+      // 下载Excel模板
+      downloadTemplate() {
+        this.$message.info('正在生成Excel模板，请稍候...');
+        
+        // 调用后端API下载模板
+        this.$axios({
+          method: 'get',
+          url: this.$httpUrl + '/pipelineCard/downloadTemplate',
+          responseType: 'blob'
+        }).then(response => {
+          // 创建blob对象
+          const blob = new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          });
+          
+          // 创建下载链接
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          
+          // 设置文件名（带时间戳）
+          const timestamp = new Date().toISOString().slice(0, 10);
+          link.download = `管道数据导入模板_${timestamp}.xlsx`;
+          
+          // 触发下载
+          document.body.appendChild(link);
+          link.click();
+          
+          // 清理
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          this.$message.success('模板下载成功！');
+        }).catch(error => {
+          console.error('下载模板失败:', error);
+          this.$message.error('下载模板失败，请稍后重试');
+        });
       },
       
       // 关闭导入对话框
@@ -2037,6 +2083,21 @@
     color: #f56c6c;
     font-size: 13px;
     line-height: 1.6;
+  }
+
+  /* 模板下载按钮样式 */
+  .template-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+
+  .template-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
   }
 
   /* 主标签页样式 */
